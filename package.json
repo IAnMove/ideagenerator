@@ -1,0 +1,17 @@
+{
+  "name": "app_generator",
+  "version": "1.0.0",
+  "description": "App generator monorepo (Fastify API + Vite React UI)",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w apps/api",
+    "dev:web": "npm run dev -w apps/web"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module"
+}
