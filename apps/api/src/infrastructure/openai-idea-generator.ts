@@ -14,10 +14,9 @@ type OpenAiConfig = {
 };
 
 type LlmSelection = {
-  mode: "manual" | "random" | "llm" | "none";
-  value?: string;
-  options?: string[];
-};
+  mode: "manual";
+  value: string;
+} | { mode: "decide" };
 
 type LlmInput = {
   language: string;
@@ -29,7 +28,7 @@ type LlmInput = {
     effort?: string;
     budget?: string;
   };
-  selections: Record<ListName, LlmSelection>;
+  selections: Partial<Record<ListName, LlmSelection>>;
 };
 
 const listNames: ListName[] = [
@@ -48,7 +47,7 @@ export class OpenAiIdeaGenerator implements IdeaGenerator {
     resolved: ResolvedSelections,
     llmOptions: LlmOptions,
   ): Promise<IdeaResponse> {
-    const input = buildLlmInput(request, resolved, llmOptions);
+    const input = buildLlmInput(request);
     const messages = buildMessages(input);
     const model = request.llm?.model || this.config.model;
     const baseUrl = request.llm?.baseUrl || this.config.baseUrl;
@@ -103,41 +102,19 @@ function buildUrl(baseUrl: string): string {
 
 function buildLlmInput(
   request: IdeaRequest,
-  resolved: ResolvedSelections,
-  llmOptions: LlmOptions,
 ): LlmInput {
-  const selectionConfigs: Record<
-    ListName,
-    { mode: "manual" | "random" | "llm" | "none"; value?: string | null }
-  > = {
-    sector: request.selections.sector,
-    audience: request.selections.audience,
-    problem: request.selections.problem,
-    productType: request.selections.productType,
-    channel: request.selections.channel,
-  };
-
-  const selections: Record<ListName, LlmSelection> = {
-    sector: { mode: selectionConfigs.sector.mode },
-    audience: { mode: selectionConfigs.audience.mode },
-    problem: { mode: selectionConfigs.problem.mode },
-    productType: { mode: selectionConfigs.productType.mode },
-    channel: { mode: selectionConfigs.channel.mode },
-  };
+  const selections: Partial<Record<ListName, LlmSelection>> = {};
 
   for (const name of listNames) {
-    const config = selections[name];
+    const config = request.selections[name];
+    if (!config || config.mode === "ignore") continue;
+
     if (config.mode === "manual") {
-      config.value = selectionConfigs[name].value ?? "";
+      selections[name] = { mode: "manual", value: (config.value ?? "").trim() };
+      continue;
     }
 
-    if (config.mode === "random") {
-      config.value = resolved[name];
-    }
-
-    if (config.mode === "llm" || config.mode === "none") {
-      config.options = llmOptions[name] ?? [];
-    }
+    selections[name] = { mode: "decide" };
   }
 
   return {
@@ -190,12 +167,11 @@ function buildMessages(input: LlmInput) {
     "- Output JSON only, matching the schema exactly.",
     "- Use input.language for all text.",
     "- Consider constraints (time/effort/budget) if provided.",
-    "- For each selection:",
-    "  - manual: use selection.value as is.",
-    "  - random: use selection.value (already randomized).",
-    "  - llm: choose ONE value from selection.options; if empty, invent a plausible value.",
-    "  - none: treat as unconstrained; choose the best value (use options if provided).",
-    "- Prioritize simplicity + Clean Code (easy-to-read code).",
+    "- Goal: make prompt.technical drive simple, Clean Code with minimal dependencies, no over-engineering, and easy-to-read code.",
+    "- Selections: input.selections may omit keys.",
+    "  - If a selection is present with mode=manual: use selection.value as is.",
+    "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
+    "  - If a selection is missing: treat it as unconstrained and choose the best value.",
     "- Architecture:",
     "  - If input.architecture is missing/empty: do NOT mention architecture.",
     "  - If input.architecture == \"__llm_best__\": choose the best architecture and justify briefly.",

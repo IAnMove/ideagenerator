@@ -2,9 +2,8 @@
 
 export const SelectionModeSchema = Type.Union([
   Type.Literal("manual"),
-  Type.Literal("random"),
-  Type.Literal("llm"),
-  Type.Literal("none"),
+  Type.Literal("decide"),
+  Type.Literal("ignore"),
 ]);
 
 export const SelectionConfigSchema = Type.Object({
@@ -57,13 +56,15 @@ export const IdeaRequestSchema = Type.Object({
   language: Type.String({ minLength: 2 }),
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
   architecture: Type.Optional(Type.String({ minLength: 1 })),
-  selections: Type.Object({
-    sector: SelectionConfigSchema,
-    audience: SelectionConfigSchema,
-    problem: SelectionConfigSchema,
-    productType: SelectionConfigSchema,
-    channel: SelectionConfigSchema,
-  }),
+  selections: Type.Partial(
+    Type.Object({
+      sector: SelectionConfigSchema,
+      audience: SelectionConfigSchema,
+      problem: SelectionConfigSchema,
+      productType: SelectionConfigSchema,
+      channel: SelectionConfigSchema,
+    }),
+  ),
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),
   llm: Type.Optional(LlmConfigSchema),

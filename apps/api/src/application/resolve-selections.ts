@@ -17,10 +17,50 @@ export function resolveSelections(
 ): ResolveResult {
   const llmOptions: LlmOptions = {};
 
-  const resolve = (name: ListName, config: SelectionConfig): string => {
-    const list = lists[name] ?? [];
+  const language = request.language === "en" ? "en" : "es";
 
-    if (config.mode === "manual") {
+  const fallbackValue = (name: ListName): string => {
+    if (language === "en") {
+      switch (name) {
+        case "sector":
+          return "general";
+        case "audience":
+          return "users";
+        case "problem":
+          return "a common pain";
+        case "productType":
+          return "web app";
+        case "channel":
+          return "organic";
+      }
+    }
+
+    switch (name) {
+      case "sector":
+        return "general";
+      case "audience":
+        return "usuarios";
+      case "problem":
+        return "un problema frecuente";
+      case "productType":
+        return "app web";
+      case "channel":
+        return "organico";
+    }
+  };
+
+  const pickOne = (items: string[]): string => {
+    if (items.length === 0) return "";
+    return items[Math.floor(Math.random() * items.length)] ?? "";
+  };
+
+  const resolve = (name: ListName): string => {
+    const config: SelectionConfig | undefined = request.selections[name];
+    const list = (lists[name] ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    if (config?.mode === "manual") {
       const value = (config.value ?? "").trim();
       if (!value) {
         throw new Error(`Missing manual value for ${name}`);
@@ -28,32 +68,16 @@ export function resolveSelections(
       return value;
     }
 
-    if (config.mode === "none") {
-      llmOptions[name] = list;
-      return "sin definir";
-    }
-
-    if (config.mode === "llm") {
-      llmOptions[name] = list;
-      if (list.length === 0) {
-        return "sin definir";
-      }
-      return list[Math.floor(Math.random() * list.length)];
-    }
-
-    if (list.length === 0) {
-      throw new Error(`List '${name}' is empty`);
-    }
-
-    return list[Math.floor(Math.random() * list.length)];
+    const picked = pickOne(list);
+    return picked || fallbackValue(name);
   };
 
   const resolved: ResolvedSelections = {
-    sector: resolve("sector", request.selections.sector),
-    audience: resolve("audience", request.selections.audience),
-    problem: resolve("problem", request.selections.problem),
-    productType: resolve("productType", request.selections.productType),
-    channel: resolve("channel", request.selections.channel),
+    sector: resolve("sector"),
+    audience: resolve("audience"),
+    problem: resolve("problem"),
+    productType: resolve("productType"),
+    channel: resolve("channel"),
   };
 
   return { resolved, llmOptions };

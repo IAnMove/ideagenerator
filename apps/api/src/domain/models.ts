@@ -1,7 +1,15 @@
 ﻿export type LanguageCode = string;
 export type TemplateLevel = "basic" | "advanced";
-export type SelectionMode = "manual" | "random" | "llm" | "none";
 export type LlmProvider = "deepseek" | "openai";
+
+export type ListName =
+  | "sector"
+  | "audience"
+  | "problem"
+  | "productType"
+  | "channel";
+
+export type SelectionMode = "manual" | "decide" | "ignore";
 
 export interface SelectionConfig {
   mode: SelectionMode;
@@ -26,13 +34,7 @@ export interface IdeaRequest {
   language: LanguageCode;
   templateLevel: TemplateLevel;
   architecture?: string;
-  selections: {
-    sector: SelectionConfig;
-    audience: SelectionConfig;
-    problem: SelectionConfig;
-    productType: SelectionConfig;
-    channel: SelectionConfig;
-  };
+  selections: Partial<Record<ListName, SelectionConfig>>;
   extraNotes?: string;
   constraints?: IdeaConstraints;
   llm?: LlmConfig;
@@ -98,10 +100,3 @@ export interface CodexPromptRequest {
 export interface CodexPromptResponse {
   prompt: string;
 }
-
-export type ListName =
-  | "sector"
-  | "audience"
-  | "problem"
-  | "productType"
-  | "channel";

@@ -2,7 +2,7 @@
 
 import defaultOptions from "./data/default-options.json";
 
-type SelectionMode = "manual" | "random" | "llm" | "none";
+type SelectionMode = "manual" | "decide" | "ignore";
 
 type ListName = "sector" | "audience" | "problem" | "productType" | "channel";
 
@@ -83,7 +83,6 @@ function formatKeyLabel(value: string): string {
 type ChatLlmSelection = {
   mode: SelectionMode;
   value?: string;
-  options?: string[];
 };
 
 type ChatArchitecture =
@@ -94,14 +93,13 @@ type ChatLlmInput = {
   language: LanguageCode;
   templateLevel: "basic" | "advanced";
   architecture?: ChatArchitecture;
-  architectureOptions?: Record<string, string>;
   extraNotes?: string;
   constraints?: {
     time?: string;
     effort?: string;
     budget?: string;
   };
-  selections: Record<ListName, ChatLlmSelection>;
+  selections: Partial<Record<ListName, ChatLlmSelection>>;
 };
 
 const ideaResponseSchema = `{
@@ -131,11 +129,6 @@ const ideaResponseSchema = `{
   ],
   "prompt": { "intro": "...", "technical": "..." }
 }`;
-
-function pickRandom(list: string[]): string | undefined {
-  if (list.length === 0) return undefined;
-  return list[Math.floor(Math.random() * list.length)];
-}
 
 function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
   const system =
@@ -168,13 +161,13 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
 
   if (input.architecture?.mode === "llm_best") {
     architectureRulesEn.push(
-      "- Architecture: choose the best architecture using input.architectureOptions and justify the choice briefly.",
+      "- Architecture: choose the best architecture and justify the choice briefly.",
     );
     architectureRulesEn.push(
       "- Put the chosen architecture + rationale at the top of prompt.technical (1-3 lines).",
     );
     architectureRulesEs.push(
-      "- Arquitectura: elige la mejor usando input.architectureOptions y justifica brevemente la eleccion.",
+      "- Arquitectura: elige la mejor y justifica brevemente la eleccion.",
     );
     architectureRulesEs.push(
       "- Pon la arquitectura elegida + razon al inicio de prompt.technical (1-3 lineas).",
@@ -188,12 +181,11 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "- Output JSON only, matching the schema exactly.",
           "- Use input.language for all text.",
           "- Consider constraints (time/effort/budget) if provided.",
-          "- Prioritize simplicity + Clean Code (easy-to-read code).",
-          "- For each selection:",
-          "  - manual: use selection.value as is.",
-          "  - random: use selection.value (already randomized).",
-          "  - llm: choose ONE value from selection.options; if empty, invent a plausible value.",
-          "  - none: treat as unconstrained; choose the best value (use options if provided).",
+          "- Goal: make prompt.technical drive simple, Clean Code with minimal dependencies, no over-engineering, and easy-to-read code.",
+          "- Selections: input.selections may omit keys.",
+          "  - If a selection is present with mode=manual: use selection.value as is.",
+          "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
+          "  - If a selection is missing: treat it as unconstrained and choose the best value.",
           ...architectureRulesEn,
           "- Generate exactly 3 ideas.",
           "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
@@ -204,12 +196,11 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "- Devuelve SOLO JSON, siguiendo el schema exactamente.",
           "- Usa input.language para TODO el texto.",
           "- Considera restricciones (time/effort/budget) si existen.",
-          "- Prioriza simplicidad + Clean Code (codigo facil de leer).",
-          "- Para cada seleccion:",
-          "  - manual: usa selection.value tal cual.",
-          "  - random: usa selection.value (ya viene aleatorizado).",
-          "  - llm: elige UN valor de selection.options; si esta vacio, inventa uno plausible.",
-          "  - none: sin restriccion; elige el mejor valor (usa options si existen).",
+          "- Objetivo: que prompt.technical empuje a codigo simple con Clean Code, minimas dependencias, sin sobreingenieria y facil de leer.",
+          "- Selecciones: input.selections puede omitir keys.",
+          "  - Si hay una seleccion con mode=manual: usa selection.value tal cual.",
+          "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
+          "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
           ...architectureRulesEs,
           "- Genera exactamente 3 ideas.",
           "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
@@ -250,9 +241,8 @@ const i18n = {
     templateAdvanced: "Avanzada",
     selections: "Combinador",
     mode: "Modo",
-    manual: "Manual",
-    random: "Aleatorio",
-    llm: "Sugiereme tu",
+    manual: "Elegir",
+    decide: "Decide tu",
     none: "Sin definir",
     addItem: "Agregar",
     saveLists: "Guardar listas",
@@ -329,9 +319,8 @@ const i18n = {
     templateAdvanced: "Advanced",
     selections: "Combiner",
     mode: "Mode",
-    manual: "Manual",
-    random: "Random",
-    llm: "Suggest for me",
+    manual: "Choose",
+    decide: "Decide",
     none: "Undefined",
     addItem: "Add",
     saveLists: "Save lists",
@@ -401,11 +390,11 @@ const i18n = {
 } as const;
 
 const initialSelections: Record<ListName, SelectionConfig> = {
-  sector: { mode: "random", value: "" },
-  audience: { mode: "random", value: "" },
-  problem: { mode: "random", value: "" },
-  productType: { mode: "random", value: "" },
-  channel: { mode: "random", value: "" },
+  sector: { mode: "decide", value: "" },
+  audience: { mode: "decide", value: "" },
+  problem: { mode: "decide", value: "" },
+  productType: { mode: "decide", value: "" },
+  channel: { mode: "decide", value: "" },
 };
 
 const defaultLists: Lists = {
@@ -415,6 +404,27 @@ const defaultLists: Lists = {
   productType: Object.keys(listOptionDescriptionsByList.productType),
   channel: Object.keys(listOptionDescriptionsByList.channel),
 };
+
+function mergeLists(base: Lists, incoming: Lists): Lists {
+  const merged: Lists = { ...base };
+
+  for (const name of listOrder) {
+    const combined = [...(base[name] ?? []), ...(incoming[name] ?? [])];
+    const seen = new Set<string>();
+
+    merged[name] = combined
+      .map((item) => item.trim())
+      .filter((item) => {
+        if (!item) return false;
+        const key = item.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  return merged;
+}
 
 export default function App() {
   const [language, setLanguage] = useState<LanguageCode>("es");
@@ -472,7 +482,7 @@ export default function App() {
         const response = await fetch("/api/v1/lists");
         if (!response.ok) throw new Error("Failed to load lists");
         const data = (await response.json()) as { lists: Lists };
-        setLists(data.lists);
+        setLists(mergeLists(defaultLists, data.lists));
       } catch (err) {
         console.error(err);
       }
@@ -573,17 +583,28 @@ export default function App() {
         budget: constraints.budget.trim() || undefined,
       };
 
+      const selectionsPayload: Partial<
+        Record<ListName, { mode: SelectionMode; value?: string }>
+      > = {};
+
+      for (const name of listOrder) {
+        const config = selections[name];
+
+        if (config.mode === "ignore") continue;
+
+        if (config.mode === "manual") {
+          selectionsPayload[name] = { mode: "manual", value: config.value };
+          continue;
+        }
+
+        selectionsPayload[name] = { mode: "decide" };
+      }
+
       const payload = {
         language,
         templateLevel,
         architecture: trimmedArchitecture || undefined,
-        selections: {
-          sector: selections.sector,
-          audience: selections.audience,
-          problem: selections.problem,
-          productType: selections.productType,
-          channel: selections.channel,
-        },
+        selections: selectionsPayload,
         extraNotes: trimmedExtraNotes || undefined,
         constraints: constraintsPayload,
         llm: {
@@ -595,31 +616,24 @@ export default function App() {
       };
 
       if (!llmEnabled) {
-        const selectionInput = {} as Record<ListName, ChatLlmSelection>;
+        const selectionInput: Partial<Record<ListName, ChatLlmSelection>> = {};
 
         for (const name of listOrder) {
           const config = selections[name];
-          const options = lists[name] ?? [];
 
           if (config.mode === "manual") {
             selectionInput[name] = { mode: "manual", value: config.value };
             continue;
           }
 
-          if (config.mode === "random") {
-            const picked = pickRandom(options);
-            selectionInput[name] = picked
-              ? { mode: "random", value: picked }
-              : { mode: "none", options };
+          if (config.mode === "decide") {
+            selectionInput[name] = { mode: "decide" };
             continue;
           }
 
-          if (config.mode === "llm") {
-            selectionInput[name] = { mode: "llm", options };
+          if (config.mode === "ignore") {
             continue;
           }
-
-          selectionInput[name] = { mode: "none", options };
         }
 
         const chatInput: ChatLlmInput = {
@@ -640,12 +654,6 @@ export default function App() {
 
         if (architectureMode === "llm_best") {
           chatInput.architecture = { mode: "llm_best" };
-          chatInput.architectureOptions = Object.fromEntries(
-            architectureKeys.map((key) => [
-              key,
-              architectureDescriptions[key]?.[language] ?? "",
-            ]),
-          );
         }
 
         setChatPrompt(buildChatPrompt(language, chatInput));
@@ -832,9 +840,8 @@ export default function App() {
                       }
                     >
                       <option value="manual">{t.manual}</option>
-                      <option value="random">{t.random}</option>
-                      <option value="llm">{t.llm}</option>
-                      <option value="none">{t.none}</option>
+                      <option value="decide">{t.decide}</option>
+                      <option value="ignore">{t.none}</option>
                     </select>
                   </div>
                 </div>
@@ -867,11 +874,7 @@ export default function App() {
                   </>
                 ) : (
                   <div className="mode-note">
-                    {selections[name].mode === "random"
-                      ? t.random
-                      : selections[name].mode === "llm"
-                      ? t.llm
-                      : t.none}
+                    {selections[name].mode === "decide" ? t.decide : t.none}
                   </div>
                 )}
 
