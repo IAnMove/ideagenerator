@@ -571,6 +571,23 @@ button.ghost {
   gap: 12px;
 }
 
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.codex textarea {
+  width: 100%;
+  min-height: 180px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  background: #fff;
+  resize: vertical;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
 .codex pre {
   background: #f7efe4;
   border-radius: 12px;

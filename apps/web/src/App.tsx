@@ -80,6 +80,75 @@ function formatKeyLabel(value: string): string {
   return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
+function safeParseJson(raw: string): unknown {
+  const trimmed = raw.trim();
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    const first = trimmed.indexOf("{");
+    const last = trimmed.lastIndexOf("}");
+    if (first >= 0 && last > first) {
+      const sliced = trimmed.slice(first, last + 1);
+      return JSON.parse(sliced) as unknown;
+    }
+    throw new Error("Invalid JSON");
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isIdeaScore(value: unknown): value is IdeaScore {
+  if (!isRecord(value)) return false;
+  return typeof value.value === "number" && isStringArray(value.reasons);
+}
+
+function isIdea(value: unknown): value is Idea {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.title === "string" &&
+    typeof value.oneLiner === "string" &&
+    typeof value.sector === "string" &&
+    typeof value.audience === "string" &&
+    typeof value.problem === "string" &&
+    typeof value.solution === "string" &&
+    typeof value.differentiator === "string" &&
+    isStringArray(value.mvp) &&
+    isIdeaScore(value.score) &&
+    isStringArray(value.pros) &&
+    isStringArray(value.cons) &&
+    typeof value.painFrequency === "string" &&
+    typeof value.willingnessToPay === "string" &&
+    typeof value.alternatives === "string" &&
+    typeof value.roiImpact === "string" &&
+    typeof value.adoptionFriction === "string" &&
+    typeof value.acquisition === "string" &&
+    typeof value.retention === "string" &&
+    typeof value.risks === "string"
+  );
+}
+
+function isIdeaResponse(value: unknown): value is IdeaResponse {
+  if (!isRecord(value)) return false;
+  if (typeof value.language !== "string") return false;
+  if (!Array.isArray(value.ideas) || !value.ideas.every(isIdea)) return false;
+  if (!isRecord(value.prompt)) return false;
+  if (typeof value.prompt.intro !== "string") return false;
+  if (typeof value.prompt.technical !== "string") return false;
+  if (
+    value.suggestedLanguage !== undefined &&
+    typeof value.suggestedLanguage !== "string"
+  ) {
+    return false;
+  }
+  return true;
+}
+
 type ChatLlmSelection = {
   mode: SelectionMode;
   value?: string;
@@ -278,6 +347,14 @@ const i18n = {
     chatPromptTitle: "Prompt para LLM (chat)",
     chatPromptHint:
       "Copia y pega este prompt en tu LLM. Pidele que devuelva solo JSON.",
+    importJsonTitle: "Cargar respuesta JSON",
+    importJsonHint:
+      "Pega aqui el JSON devuelto por el LLM (sin markdown) para ver las ideas dentro de la app.",
+    importJsonPlaceholder: "Pega aqui la respuesta JSON del LLM...",
+    importJsonLoad: "Cargar",
+    importJsonClear: "Limpiar",
+    importJsonInvalid:
+      "JSON invalido o no sigue el schema. Asegurate de pegar SOLO el JSON del output.",
     copy: "Copiar",
     copied: "Copiado",
     architecture: "Arquitectura (opcional)",
@@ -356,6 +433,14 @@ const i18n = {
     chatPromptTitle: "Chat LLM prompt",
     chatPromptHint:
       "Copy/paste this into your LLM. Ask it to return JSON only.",
+    importJsonTitle: "Load JSON response",
+    importJsonHint:
+      "Paste the JSON returned by the LLM (no markdown) to view the ideas inside the app.",
+    importJsonPlaceholder: "Paste the LLM JSON response here...",
+    importJsonLoad: "Load",
+    importJsonClear: "Clear",
+    importJsonInvalid:
+      "Invalid JSON or schema mismatch. Make sure you paste ONLY the JSON output.",
     copy: "Copy",
     copied: "Copied",
     architecture: "Architecture (optional)",
@@ -452,6 +537,8 @@ export default function App() {
   const [result, setResult] = useState<IdeaResponse | null>(null);
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatPromptCopied, setChatPromptCopied] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importJsonError, setImportJsonError] = useState<string | null>(null);
   const [llmEnabled, setLlmEnabled] = useState(false);
   const [llmProvider, setLlmProvider] = useState<LlmProvider>("deepseek");
   const [llmModel, setLlmModel] = useState("");
@@ -464,6 +551,7 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const t = i18n[language];
+  const resultsHint = result ? t.selectIdeaHint : chatPrompt ? t.chatPromptHint : t.subtitle;
   const trimmedArchitecture = architecture.trim();
   const architectureMode =
     trimmedArchitecture === ARCHITECTURE_LLM_BEST
@@ -572,6 +660,8 @@ export default function App() {
     setResult(null);
     setChatPrompt("");
     setChatPromptCopied(false);
+    setImportJson("");
+    setImportJsonError(null);
     resetCodexPrompt();
 
     try {
@@ -677,6 +767,30 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoadImportedJson = () => {
+    const raw = importJson.trim();
+    if (!raw) return;
+
+    try {
+      const parsed = safeParseJson(raw);
+      if (!isIdeaResponse(parsed)) {
+        throw new Error(t.importJsonInvalid);
+      }
+      setImportJsonError(null);
+      setError(null);
+      setResult(parsed);
+      resetCodexPrompt();
+    } catch (err) {
+      const message = (err as Error).message || t.importJsonInvalid;
+      setImportJsonError(message);
+    }
+  };
+
+  const handleClearImportedJson = () => {
+    setImportJson("");
+    setImportJsonError(null);
   };
 
   const handleSelectIdea = async (idea: Idea, index: number) => {
@@ -1028,9 +1142,7 @@ export default function App() {
           <div className="panel-header">
             <div>
               <h2>{t.results}</h2>
-              <p className="hint">
-                {llmEnabled ? t.selectIdeaHint : t.chatPromptHint}
-              </p>
+              <p className="hint">{resultsHint}</p>
             </div>
             {result?.suggestedLanguage ? (
               <div className="badge">
@@ -1040,34 +1152,71 @@ export default function App() {
           </div>
 
           {!result ? (
-            chatPrompt ? (
-              <div className="codex">
-                <div className="codex-header">
-                  <h3>{t.chatPromptTitle}</h3>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={handleCopyChatPrompt}
-                    disabled={!chatPrompt}
-                  >
-                    {chatPromptCopied ? t.copied : t.copy}
-                  </button>
-                </div>
-                <p className="hint">{t.chatPromptHint}</p>
-                <pre>{chatPrompt}</pre>
-              </div>
-            ) : (
-              <div className="empty">
-                {loading ? (
-                  <div className="loading">
-                    <div className="spinner" />
-                    <span>{t.loading}</span>
+            <>
+              {chatPrompt ? (
+                <div className="codex">
+                  <div className="codex-header">
+                    <h3>{t.chatPromptTitle}</h3>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={handleCopyChatPrompt}
+                      disabled={!chatPrompt}
+                    >
+                      {chatPromptCopied ? t.copied : t.copy}
+                    </button>
                   </div>
-                ) : (
-                  t.subtitle
-                )}
-              </div>
-            )
+                  <p className="hint">{t.chatPromptHint}</p>
+                  <pre>{chatPrompt}</pre>
+                </div>
+              ) : (
+                <div className="empty">
+                  {loading ? (
+                    <div className="loading">
+                      <div className="spinner" />
+                      <span>{t.loading}</span>
+                    </div>
+                  ) : (
+                    t.subtitle
+                  )}
+                </div>
+              )}
+
+              {!llmEnabled ? (
+                <div className="codex">
+                  <div className="codex-header">
+                    <h3>{t.importJsonTitle}</h3>
+                    <div className="button-row">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleLoadImportedJson}
+                        disabled={!importJson.trim()}
+                      >
+                        {t.importJsonLoad}
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleClearImportedJson}
+                        disabled={!importJson.trim() && !importJsonError}
+                      >
+                        {t.importJsonClear}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="hint">{t.importJsonHint}</p>
+                  {importJsonError ? (
+                    <div className="error">{importJsonError}</div>
+                  ) : null}
+                  <textarea
+                    placeholder={t.importJsonPlaceholder}
+                    value={importJson}
+                    onChange={(event) => setImportJson(event.target.value)}
+                  />
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="results-body">
               <div className="ideas">
