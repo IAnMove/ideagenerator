@@ -22,6 +22,7 @@ type LlmSelection = {
 type LlmInput = {
   language: string;
   templateLevel: string;
+  architecture?: string;
   extraNotes?: string;
   constraints?: {
     time?: string;
@@ -142,6 +143,7 @@ function buildLlmInput(
   return {
     language: request.language,
     templateLevel: request.templateLevel,
+    architecture: request.architecture?.trim() || undefined,
     extraNotes: request.extraNotes,
     constraints: request.constraints,
     selections,
@@ -193,9 +195,15 @@ function buildMessages(input: LlmInput) {
     "  - random: use selection.value (already randomized).",
     "  - llm: choose ONE value from selection.options; if empty, invent a plausible value.",
     "  - none: treat as unconstrained; choose the best value (use options if provided).",
+    "- Prioritize simplicity + Clean Code (easy-to-read code).",
+    "- Architecture:",
+    "  - If input.architecture is missing/empty: do NOT mention architecture.",
+    "  - If input.architecture == \"__llm_best__\": choose the best architecture and justify briefly.",
+    "    Put the chosen architecture + rationale at the top of prompt.technical (1-3 lines).",
+    "  - Otherwise: follow input.architecture (treat it as a key/name) and align the prompt.technical accordingly.",
     "- Generate exactly 3 ideas.",
     "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-    "- The prompt.technical must include Clean Architecture + Clean Code guidance.",
+    "- The prompt.technical must include: Clean Code guidance, practical folder structure, endpoints, data models, validations, minimal tests, and a short README outline.",
     "",
     "SCHEMA:",
     schema,

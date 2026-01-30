@@ -56,6 +56,7 @@ export const IdeaSchema = Type.Object({
 export const IdeaRequestSchema = Type.Object({
   language: Type.String({ minLength: 2 }),
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
+  architecture: Type.Optional(Type.String({ minLength: 1 })),
   selections: Type.Object({
     sector: SelectionConfigSchema,
     audience: SelectionConfigSchema,
@@ -71,6 +72,7 @@ export const IdeaRequestSchema = Type.Object({
 export const CodexPromptRequestSchema = Type.Object({
   language: Type.String({ minLength: 2 }),
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
+  architecture: Type.Optional(Type.String({ minLength: 1 })),
   idea: IdeaSchema,
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),

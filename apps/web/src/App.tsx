@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
+import defaultOptions from "./data/default-options.json";
+
 type SelectionMode = "manual" | "random" | "llm" | "none";
 
 type ListName = "sector" | "audience" | "problem" | "productType" | "channel";
@@ -56,6 +58,179 @@ type Constraints = {
   budget: string;
 };
 
+type LocalizedDescriptions = Record<string, Record<LanguageCode, string>>;
+
+const architectureDescriptions =
+  defaultOptions.architectures as LocalizedDescriptions;
+
+const architectureKeys = Object.keys(architectureDescriptions).sort();
+
+const ARCHITECTURE_LLM_BEST = "__llm_best__";
+
+const listOptionDescriptionsByList: Record<ListName, LocalizedDescriptions> = {
+  sector: defaultOptions.sector as LocalizedDescriptions,
+  audience: defaultOptions.audience as LocalizedDescriptions,
+  problem: defaultOptions.problem as LocalizedDescriptions,
+  productType: defaultOptions.productType as LocalizedDescriptions,
+  channel: defaultOptions.channel as LocalizedDescriptions,
+};
+
+function formatKeyLabel(value: string): string {
+  const normalized = value.trim().replace(/[-_]+/g, " ");
+  return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+type ChatLlmSelection = {
+  mode: SelectionMode;
+  value?: string;
+  options?: string[];
+};
+
+type ChatArchitecture =
+  | { mode: "manual"; key: string; description?: string }
+  | { mode: "llm_best" };
+
+type ChatLlmInput = {
+  language: LanguageCode;
+  templateLevel: "basic" | "advanced";
+  architecture?: ChatArchitecture;
+  architectureOptions?: Record<string, string>;
+  extraNotes?: string;
+  constraints?: {
+    time?: string;
+    effort?: string;
+    budget?: string;
+  };
+  selections: Record<ListName, ChatLlmSelection>;
+};
+
+const ideaResponseSchema = `{
+  "language": "es" | "en",
+  "ideas": [
+    {
+      "title": "...",
+      "oneLiner": "...",
+      "sector": "...",
+      "audience": "...",
+      "problem": "...",
+      "solution": "...",
+      "differentiator": "...",
+      "mvp": ["...", "...", "..."],
+      "score": { "value": 1-10, "reasons": ["...", "...", "..."] },
+      "pros": ["...", "...", "..."],
+      "cons": ["...", "...", "..."],
+      "painFrequency": "...",
+      "willingnessToPay": "...",
+      "alternatives": "...",
+      "roiImpact": "...",
+      "adoptionFriction": "...",
+      "acquisition": "...",
+      "retention": "...",
+      "risks": "..."
+    }
+  ],
+  "prompt": { "intro": "...", "technical": "..." }
+}`;
+
+function pickRandom(list: string[]): string | undefined {
+  if (list.length === 0) return undefined;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
+  const system =
+    language === "en"
+      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.";
+
+  const task =
+    language === "en"
+      ? [
+          "TASK:",
+          "Generate 3 app ideas AND a technical prompt ready to paste into a coding agent (Codex).",
+        ]
+      : [
+          "TAREA:",
+          "Genera 3 ideas de apps Y un prompt tecnico listo para pegar en un agente de codigo (Codex).",
+        ];
+
+  const architectureRulesEn: string[] = [];
+  const architectureRulesEs: string[] = [];
+
+  if (input.architecture?.mode === "manual") {
+    architectureRulesEn.push(
+      "- Architecture: follow input.architecture.key exactly (do not change it).",
+    );
+    architectureRulesEs.push(
+      "- Arquitectura: respeta input.architecture.key exactamente (no la cambies).",
+    );
+  }
+
+  if (input.architecture?.mode === "llm_best") {
+    architectureRulesEn.push(
+      "- Architecture: choose the best architecture using input.architectureOptions and justify the choice briefly.",
+    );
+    architectureRulesEn.push(
+      "- Put the chosen architecture + rationale at the top of prompt.technical (1-3 lines).",
+    );
+    architectureRulesEs.push(
+      "- Arquitectura: elige la mejor usando input.architectureOptions y justifica brevemente la eleccion.",
+    );
+    architectureRulesEs.push(
+      "- Pon la arquitectura elegida + razon al inicio de prompt.technical (1-3 lineas).",
+    );
+  }
+
+  const rules =
+    language === "en"
+      ? [
+          "RULES:",
+          "- Output JSON only, matching the schema exactly.",
+          "- Use input.language for all text.",
+          "- Consider constraints (time/effort/budget) if provided.",
+          "- Prioritize simplicity + Clean Code (easy-to-read code).",
+          "- For each selection:",
+          "  - manual: use selection.value as is.",
+          "  - random: use selection.value (already randomized).",
+          "  - llm: choose ONE value from selection.options; if empty, invent a plausible value.",
+          "  - none: treat as unconstrained; choose the best value (use options if provided).",
+          ...architectureRulesEn,
+          "- Generate exactly 3 ideas.",
+          "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
+          "- The prompt.technical must include: Clean Code guidance, a practical structure (folders), endpoints, data models, validations, minimal tests, and a short README outline.",
+        ]
+      : [
+          "REGLAS:",
+          "- Devuelve SOLO JSON, siguiendo el schema exactamente.",
+          "- Usa input.language para TODO el texto.",
+          "- Considera restricciones (time/effort/budget) si existen.",
+          "- Prioriza simplicidad + Clean Code (codigo facil de leer).",
+          "- Para cada seleccion:",
+          "  - manual: usa selection.value tal cual.",
+          "  - random: usa selection.value (ya viene aleatorizado).",
+          "  - llm: elige UN valor de selection.options; si esta vacio, inventa uno plausible.",
+          "  - none: sin restriccion; elige el mejor valor (usa options si existen).",
+          ...architectureRulesEs,
+          "- Genera exactamente 3 ideas.",
+          "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
+          "- El prompt.technical debe incluir: guia de Clean Code, una estructura practica (carpetas), endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
+        ];
+
+  return [
+    system,
+    "",
+    ...task,
+    "",
+    ...rules,
+    "",
+    language === "en" ? "SCHEMA:" : "SCHEMA:",
+    ideaResponseSchema,
+    "",
+    language === "en" ? "INPUT:" : "INPUT:",
+    JSON.stringify(input, null, 2),
+  ].join("\n");
+}
+
 const listOrder: ListName[] = [
   "sector",
   "audience",
@@ -87,6 +262,7 @@ const i18n = {
     effort: "Esfuerzo/capacidad",
     budget: "Presupuesto",
     generate: "Generar ideas",
+    generatePrompt: "Generar prompt para chat",
     results: "Resultados",
     prompt: "Prompt tecnico",
     pros: "Pros",
@@ -102,15 +278,23 @@ const i18n = {
     llmBaseUrl: "Base URL (opcional)",
     llmApiKey: "API Key",
     llmApiKeyHint: "No se guarda. Se envia solo en la peticion.",
-    llmDisabledHint: "Desactivado = generacion local rapida",
+    llmDisabledHint: "Desactivado = genera un prompt para pegar en un chat con un LLM",
     providerDeepSeek: "DeepSeek",
     providerOpenAi: "OpenAI",
     selectIdeaHint: "Selecciona una idea para generar el prompt de Codex.",
     codexPrompt: "Prompt para Codex",
     codexGenerating: "Optimizando prompt...",
     codexEmpty: "Selecciona una idea para generar el prompt.",
+    chatPromptTitle: "Prompt para LLM (chat)",
+    chatPromptHint:
+      "Copia y pega este prompt en tu LLM. Pidele que devuelva solo JSON.",
     copy: "Copiar",
     copied: "Copiado",
+    architecture: "Arquitectura (opcional)",
+    architectureHint:
+      "Manual: fuerzas una. Sin definir: se omite. LLM decide: elige y justifica.",
+    architectureAuto: "LLM decide",
+    architectureAutoHint: "El LLM eligira y justificara la mejor arquitectura.",
     validation: "Validacion",
     painFrequency: "Dolor y frecuencia",
     willingnessToPay: "Disposicion a pagar",
@@ -157,6 +341,7 @@ const i18n = {
     effort: "Effort/capacity",
     budget: "Budget",
     generate: "Generate ideas",
+    generatePrompt: "Generate chat prompt",
     results: "Results",
     prompt: "Technical prompt",
     pros: "Pros",
@@ -172,15 +357,23 @@ const i18n = {
     llmBaseUrl: "Base URL (optional)",
     llmApiKey: "API Key",
     llmApiKeyHint: "Not saved. Sent only with the request.",
-    llmDisabledHint: "Disabled = fast local generation",
+    llmDisabledHint: "Disabled = generates a prompt to paste into an LLM chat",
     providerDeepSeek: "DeepSeek",
     providerOpenAi: "OpenAI",
     selectIdeaHint: "Select an idea to generate the Codex prompt.",
     codexPrompt: "Codex prompt",
     codexGenerating: "Optimizing prompt...",
     codexEmpty: "Select an idea to generate the prompt.",
+    chatPromptTitle: "Chat LLM prompt",
+    chatPromptHint:
+      "Copy/paste this into your LLM. Ask it to return JSON only.",
     copy: "Copy",
     copied: "Copied",
+    architecture: "Architecture (optional)",
+    architectureHint:
+      "Manual: you force one. Undefined: omit it. LLM decides: picks and justifies the best one.",
+    architectureAuto: "LLM decides",
+    architectureAutoHint: "The LLM will pick and justify the best architecture.",
     validation: "Validation",
     painFrequency: "Pain & frequency",
     willingnessToPay: "Willingness to pay",
@@ -215,12 +408,12 @@ const initialSelections: Record<ListName, SelectionConfig> = {
   channel: { mode: "random", value: "" },
 };
 
-const emptyLists: Lists = {
-  sector: [],
-  audience: [],
-  problem: [],
-  productType: [],
-  channel: [],
+const defaultLists: Lists = {
+  sector: Object.keys(listOptionDescriptionsByList.sector),
+  audience: Object.keys(listOptionDescriptionsByList.audience),
+  problem: Object.keys(listOptionDescriptionsByList.problem),
+  productType: Object.keys(listOptionDescriptionsByList.productType),
+  channel: Object.keys(listOptionDescriptionsByList.channel),
 };
 
 export default function App() {
@@ -228,7 +421,8 @@ export default function App() {
   const [templateLevel, setTemplateLevel] = useState<"basic" | "advanced">(
     "basic",
   );
-  const [lists, setLists] = useState<Lists>(emptyLists);
+  const [architecture, setArchitecture] = useState("");
+  const [lists, setLists] = useState<Lists>(defaultLists);
   const [selections, setSelections] = useState(initialSelections);
   const [newItems, setNewItems] = useState<Record<ListName, string>>({
     sector: "",
@@ -246,6 +440,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IdeaResponse | null>(null);
+  const [chatPrompt, setChatPrompt] = useState("");
+  const [chatPromptCopied, setChatPromptCopied] = useState(false);
   const [llmEnabled, setLlmEnabled] = useState(false);
   const [llmProvider, setLlmProvider] = useState<LlmProvider>("deepseek");
   const [llmModel, setLlmModel] = useState("");
@@ -258,6 +454,17 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const t = i18n[language];
+  const trimmedArchitecture = architecture.trim();
+  const architectureMode =
+    trimmedArchitecture === ARCHITECTURE_LLM_BEST
+      ? "llm_best"
+      : trimmedArchitecture
+        ? "manual"
+        : "ignore";
+  const architectureDescription =
+    architectureMode === "manual"
+      ? architectureDescriptions[trimmedArchitecture]?.[language]
+      : undefined;
 
   useEffect(() => {
     const loadLists = async () => {
@@ -353,12 +560,23 @@ export default function App() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setChatPrompt("");
+    setChatPromptCopied(false);
     resetCodexPrompt();
 
     try {
+      const trimmedExtraNotes = extraNotes.trim();
+
+      const constraintsPayload = {
+        time: constraints.time.trim() || undefined,
+        effort: constraints.effort.trim() || undefined,
+        budget: constraints.budget.trim() || undefined,
+      };
+
       const payload = {
         language,
         templateLevel,
+        architecture: trimmedArchitecture || undefined,
         selections: {
           sector: selections.sector,
           audience: selections.audience,
@@ -366,12 +584,8 @@ export default function App() {
           productType: selections.productType,
           channel: selections.channel,
         },
-        extraNotes: extraNotes.trim() || undefined,
-        constraints: {
-          time: constraints.time.trim() || undefined,
-          effort: constraints.effort.trim() || undefined,
-          budget: constraints.budget.trim() || undefined,
-        },
+        extraNotes: trimmedExtraNotes || undefined,
+        constraints: constraintsPayload,
         llm: {
           enabled: llmEnabled,
           provider: llmProvider,
@@ -379,6 +593,64 @@ export default function App() {
           baseUrl: llmBaseUrl.trim() || undefined,
         },
       };
+
+      if (!llmEnabled) {
+        const selectionInput = {} as Record<ListName, ChatLlmSelection>;
+
+        for (const name of listOrder) {
+          const config = selections[name];
+          const options = lists[name] ?? [];
+
+          if (config.mode === "manual") {
+            selectionInput[name] = { mode: "manual", value: config.value };
+            continue;
+          }
+
+          if (config.mode === "random") {
+            const picked = pickRandom(options);
+            selectionInput[name] = picked
+              ? { mode: "random", value: picked }
+              : { mode: "none", options };
+            continue;
+          }
+
+          if (config.mode === "llm") {
+            selectionInput[name] = { mode: "llm", options };
+            continue;
+          }
+
+          selectionInput[name] = { mode: "none", options };
+        }
+
+        const chatInput: ChatLlmInput = {
+          language,
+          templateLevel,
+          extraNotes: trimmedExtraNotes || undefined,
+          constraints: constraintsPayload,
+          selections: selectionInput,
+        };
+
+        if (architectureMode === "manual") {
+          chatInput.architecture = {
+            mode: "manual",
+            key: trimmedArchitecture,
+            description: architectureDescription,
+          };
+        }
+
+        if (architectureMode === "llm_best") {
+          chatInput.architecture = { mode: "llm_best" };
+          chatInput.architectureOptions = Object.fromEntries(
+            architectureKeys.map((key) => [
+              key,
+              architectureDescriptions[key]?.[language] ?? "",
+            ]),
+          );
+        }
+
+        setChatPrompt(buildChatPrompt(language, chatInput));
+        return;
+      }
 
       const response = await fetch("/api/v1/ideas", {
         method: "POST",
@@ -410,6 +682,7 @@ export default function App() {
       const payload = {
         language,
         templateLevel,
+        architecture: trimmedArchitecture || undefined,
         idea,
         extraNotes: extraNotes.trim() || undefined,
         constraints: {
@@ -441,6 +714,17 @@ export default function App() {
       setCodexError((err as Error).message);
     } finally {
       setCodexLoading(false);
+    }
+  };
+
+  const handleCopyChatPrompt = async () => {
+    if (!chatPrompt) return;
+    try {
+      await navigator.clipboard.writeText(chatPrompt);
+      setChatPromptCopied(true);
+      setTimeout(() => setChatPromptCopied(false), 1500);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -503,6 +787,35 @@ export default function App() {
           </div>
 
           <div className="grid">
+            <div className="field">
+              <div className="field-title">
+                <div>
+                  <strong>{t.architecture}</strong>
+                  <span>{t.architectureHint}</span>
+                </div>
+              </div>
+
+              <select
+                className="value-select"
+                value={architecture}
+                onChange={(event) => setArchitecture(event.target.value)}
+              >
+                <option value="">{t.none}</option>
+                <option value={ARCHITECTURE_LLM_BEST}>{t.architectureAuto}</option>
+                {architectureKeys.map((key) => (
+                  <option key={key} value={key}>
+                    {formatKeyLabel(key)}
+                  </option>
+                ))}
+              </select>
+
+              {architectureMode === "llm_best" ? (
+                <div className="option-description">{t.architectureAutoHint}</div>
+              ) : architectureMode === "manual" && architectureDescription ? (
+                <div className="option-description">{architectureDescription}</div>
+              ) : null}
+            </div>
+
             {listOrder.map((name) => (
               <div className="field" key={name}>
                 <div className="field-title">
@@ -527,18 +840,31 @@ export default function App() {
                 </div>
 
                 {selections[name].mode === "manual" ? (
-                  <select
-                    className="value-select"
-                    value={selections[name].value}
-                    onChange={(event) => handleValueChange(name, event.target.value)}
-                  >
-                    <option value="">--</option>
-                    {lists[name]?.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      className="value-select"
+                      value={selections[name].value}
+                      onChange={(event) =>
+                        handleValueChange(name, event.target.value)
+                      }
+                    >
+                      <option value="">--</option>
+                      {lists[name]?.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const selected = selections[name].value;
+                      if (!selected) return null;
+                      const description =
+                        listOptionDescriptionsByList[name]?.[selected]?.[language];
+                      return description ? (
+                        <div className="option-description">{description}</div>
+                      ) : null;
+                    })()}
+                  </>
                 ) : (
                   <div className="mode-note">
                     {selections[name].mode === "random"
@@ -688,7 +1014,7 @@ export default function App() {
                 onClick={generateIdeas}
                 disabled={!canGenerate || loading}
               >
-                {loading ? t.loading : t.generate}
+                {loading ? t.loading : llmEnabled ? t.generate : t.generatePrompt}
               </button>
             </div>
             {error ? <div className="error">{error}</div> : null}
@@ -699,7 +1025,9 @@ export default function App() {
           <div className="panel-header">
             <div>
               <h2>{t.results}</h2>
-              <p className="hint">{t.selectIdeaHint}</p>
+              <p className="hint">
+                {llmEnabled ? t.selectIdeaHint : t.chatPromptHint}
+              </p>
             </div>
             {result?.suggestedLanguage ? (
               <div className="badge">
@@ -709,16 +1037,34 @@ export default function App() {
           </div>
 
           {!result ? (
-            <div className="empty">
-              {loading ? (
-                <div className="loading">
-                  <div className="spinner" />
-                  <span>{t.loading}</span>
+            chatPrompt ? (
+              <div className="codex">
+                <div className="codex-header">
+                  <h3>{t.chatPromptTitle}</h3>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={handleCopyChatPrompt}
+                    disabled={!chatPrompt}
+                  >
+                    {chatPromptCopied ? t.copied : t.copy}
+                  </button>
                 </div>
-              ) : (
-                t.subtitle
-              )}
-            </div>
+                <p className="hint">{t.chatPromptHint}</p>
+                <pre>{chatPrompt}</pre>
+              </div>
+            ) : (
+              <div className="empty">
+                {loading ? (
+                  <div className="loading">
+                    <div className="spinner" />
+                    <span>{t.loading}</span>
+                  </div>
+                ) : (
+                  t.subtitle
+                )}
+              </div>
+            )
           ) : (
             <div className="results-body">
               <div className="ideas">

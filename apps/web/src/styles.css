@@ -225,6 +225,15 @@ p {
   font-weight: 600;
 }
 
+.option-description {
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: #fffdf9;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
 .adder {
   display: flex;
   gap: 8px;

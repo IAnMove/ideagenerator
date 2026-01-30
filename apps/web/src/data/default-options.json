@@ -1,0 +1,442 @@
+{
+  "architectures": {
+    "clean_architecture": {
+      "es": "Separacion clara por capas (domain/application/infrastructure/interface) para mantener el dominio puro, testear facil y cambiar frameworks sin dolor.",
+      "en": "Clear layering (domain/application/infrastructure/interface) to keep the domain pure, test easily, and swap frameworks with minimal friction."
+    },
+    "hexagonal_ports_and_adapters": {
+      "es": "Arquitectura hexagonal (ports & adapters): defines puertos en el dominio y adaptadores en infraestructura; ideal para aislar reglas de negocio y dependencias externas.",
+      "en": "Hexagonal (ports & adapters): define ports in the domain and adapters in infrastructure; great to isolate business rules from external dependencies."
+    },
+    "layered_mvc": {
+      "es": "Capas clasicas (MVC/Controller-Service-Repository): simple y rapida para CRUD y apps pequenas/medianas; menos estricta que Clean/Hexagonal.",
+      "en": "Classic layering (MVC/Controller-Service-Repository): simple and fast for CRUD and small/medium apps; less strict than Clean/Hexagonal."
+    },
+    "vertical_slice": {
+      "es": "Vertical Slice: organizacion por features (cada caso de uso con su handler, DTOs, validacion y tests). Reduce acoplamiento transversal y escala bien en equipos.",
+      "en": "Vertical Slice: feature-based organization (each use case with its handler, DTOs, validation, and tests). Reduces cross-cutting coupling and scales well for teams."
+    },
+    "modular_monolith": {
+      "es": "Monolito modular: un despliegue pero con modulos/bounded contexts bien separados. Mantiene simplicidad operativa con limites claros.",
+      "en": "Modular monolith: one deployment but with well-separated modules/bounded contexts. Keeps operational simplicity with clear boundaries."
+    },
+    "microservices": {
+      "es": "Microservicios: servicios independientes por dominios/capacidades. Escala y aisla cambios, pero sube la complejidad operativa (observabilidad, despliegues, datos).",
+      "en": "Microservices: independent services by domains/capabilities. Scales and isolates change, but increases ops complexity (observability, deployments, data)."
+    },
+    "serverless_event_driven": {
+      "es": "Serverless/event-driven: funciones y eventos (colas/webhooks). Escala bajo demanda y reduce servidores, pero requiere diseno cuidadoso (idempotencia, trazas, cold starts).",
+      "en": "Serverless/event-driven: functions and events (queues/webhooks). Scales on demand and reduces servers, but needs careful design (idempotency, tracing, cold starts)."
+    }
+  },
+  "sector": {
+    "finanzas": {
+      "es": "Fintech, banca, pagos, contabilidad, inversiones y gestion financiera.",
+      "en": "Fintech, banking, payments, accounting, investing, and financial ops."
+    },
+    "salud": {
+      "es": "Clinicas, pacientes, telemedicina, bienestar y operaciones sanitarias.",
+      "en": "Clinics, patients, telemedicine, wellness, and healthcare operations."
+    },
+    "educacion": {
+      "es": "Aprendizaje online, escuelas, formacion corporativa, tutorias y evaluacion.",
+      "en": "Online learning, schools, corporate training, tutoring, and assessment."
+    },
+    "viajes": {
+      "es": "Planificacion, reservas, itinerarios, gastos, experiencias y soporte al viajero.",
+      "en": "Planning, booking, itineraries, expenses, experiences, and traveler support."
+    },
+    "productividad": {
+      "es": "Organizacion del trabajo, automatizacion de tareas y mejora de foco/flujo.",
+      "en": "Work organization, task automation, and improved focus/flow."
+    },
+    "ecommerce": {
+      "es": "Venta online: catalogos, pagos, fulfillment, soporte y analitica.",
+      "en": "Online commerce: catalogs, payments, fulfillment, support, analytics."
+    },
+    "marketing": {
+      "es": "Campanas, contenido, automatizacion, attribution, CRM y growth.",
+      "en": "Campaigns, content, automation, attribution, CRM, and growth."
+    },
+    "recursos humanos": {
+      "es": "Recruiting, onboarding, desempeno, nomina y people ops.",
+      "en": "Recruiting, onboarding, performance, payroll, and people ops."
+    },
+    "logistica": {
+      "es": "Inventario, rutas, envios, trazabilidad, almacenes y operaciones.",
+      "en": "Inventory, routing, shipping, traceability, warehousing, operations."
+    },
+    "legal": {
+      "es": "Contratos, compliance, gestion de casos, documentacion y firmas.",
+      "en": "Contracts, compliance, case management, documentation, and e-signatures."
+    },
+    "energia": {
+      "es": "Consumo, eficiencia, monitoreo, tarifas, mantenimiento y energia sostenible.",
+      "en": "Consumption, efficiency, monitoring, tariffs, maintenance, sustainable energy."
+    },
+    "real estate": {
+      "es": "Propiedades, alquileres, visitas, brokers y administracion inmobiliaria.",
+      "en": "Properties, rentals, showings, brokers, and property management."
+    },
+    "hospitalidad": {
+      "es": "Hoteles/restaurantes: reservas, staff, operaciones, experiencia y reputacion.",
+      "en": "Hotels/restaurants: bookings, staff, operations, experience, reputation."
+    },
+    "retail": {
+      "es": "Tiendas fisicas: POS, inventario, promociones, omnicanal y analitica.",
+      "en": "Physical retail: POS, inventory, promos, omnichannel, and analytics."
+    },
+    "tecnologia": {
+      "es": "SaaS/B2B tech: devtools, IT ops, seguridad, data y productividad.",
+      "en": "SaaS/B2B tech: devtools, IT ops, security, data, and productivity."
+    },
+    "agritech": {
+      "es": "Agricultura: monitoreo, insumos, clima, trazabilidad y rendimiento.",
+      "en": "Agriculture: monitoring, inputs, weather, traceability, and yield."
+    },
+    "gaming": {
+      "es": "Juegos: engagement, monetizacion, comunidad, contenido y live ops.",
+      "en": "Games: engagement, monetization, community, content, and live ops."
+    },
+    "sostenibilidad": {
+      "es": "ESG, medicion de impacto, huella de carbono y reporting.",
+      "en": "ESG, impact measurement, carbon footprint, and reporting."
+    },
+    "medios": {
+      "es": "Contenido y medios: creacion, distribucion, audiencias y monetizacion.",
+      "en": "Media & content: creation, distribution, audiences, monetization."
+    },
+    "movilidad": {
+      "es": "Transporte: flotas, rutas, movilidad urbana/micro y pagos.",
+      "en": "Transport: fleets, routing, urban/micro mobility, and payments."
+    }
+  },
+  "audience": {
+    "nomadas digitales": {
+      "es": "Profesionales remotos que viajan; valoran herramientas moviles y async.",
+      "en": "Remote professionals who travel; need mobile-first and async workflows."
+    },
+    "freelancers": {
+      "es": "Independientes que gestionan clientes, proyectos, facturacion y tiempo.",
+      "en": "Independents managing clients, projects, invoicing, and time."
+    },
+    "pymes": {
+      "es": "Pequenas/medianas empresas que buscan eficiencia y herramientas simples.",
+      "en": "SMBs seeking efficiency and simple, practical tooling."
+    },
+    "estudiantes": {
+      "es": "Estudiantes que organizan estudio, tareas, apuntes y colaboracion.",
+      "en": "Students organizing study, tasks, notes, and collaboration."
+    },
+    "equipos remotos": {
+      "es": "Equipos distribuidos que necesitan coordinacion, docs y visibilidad.",
+      "en": "Distributed teams needing coordination, documentation, and visibility."
+    },
+    "startups": {
+      "es": "Equipos en crecimiento que priorizan velocidad, metricas y automatizacion.",
+      "en": "Growing teams prioritizing speed, metrics, and automation."
+    },
+    "gerentes": {
+      "es": "Lideres que coordinan personas, KPIs, planificacion y ejecucion.",
+      "en": "Managers coordinating people, KPIs, planning, and execution."
+    },
+    "equipos de ventas": {
+      "es": "Equipos comerciales: pipeline, seguimiento, cierres y reporting.",
+      "en": "Sales teams: pipeline, follow-ups, closing, and reporting."
+    },
+    "equipos de marketing": {
+      "es": "Marketing: campanas, contenido, analitica y automatizacion.",
+      "en": "Marketing: campaigns, content, analytics, and automation."
+    },
+    "recursos humanos": {
+      "es": "RRHH: contratacion, onboarding, desempeno y operaciones de personas.",
+      "en": "HR: hiring, onboarding, performance, and people operations."
+    },
+    "finanzas corporativas": {
+      "es": "Finanzas internas: presupuestos, reporting, control y compliance.",
+      "en": "Corporate finance: budgeting, reporting, control, and compliance."
+    },
+    "creadores de contenido": {
+      "es": "Creadores: ideacion, produccion, calendario, distribucion y monetizacion.",
+      "en": "Creators: ideation, production, calendar, distribution, monetization."
+    },
+    "comerciantes": {
+      "es": "Vendedores/tiendas: inventario, ventas, proveedores y margenes.",
+      "en": "Merchants: inventory, sales, suppliers, and margins."
+    },
+    "propietarios de locales": {
+      "es": "Dueno de negocio fisico: operacion diaria, reservas, staff y caja.",
+      "en": "Brick-and-mortar owner: daily ops, bookings, staff, and cashflow."
+    },
+    "trabajadores de campo": {
+      "es": "Personal en terreno: checklists, reportes, geo, fotos y trazabilidad.",
+      "en": "Field workers: checklists, reports, geo, photos, and traceability."
+    },
+    "profesionales de salud": {
+      "es": "Clinicos: agenda, pacientes, seguimiento y documentacion.",
+      "en": "Clinicians: scheduling, patients, follow-up, and documentation."
+    },
+    "abogados": {
+      "es": "Legal: casos, plazos, documentos, research y facturacion.",
+      "en": "Legal: cases, deadlines, documents, research, and billing."
+    },
+    "profesores": {
+      "es": "Docentes: planificacion, evaluacion, materiales y comunicacion.",
+      "en": "Teachers: planning, assessment, materials, and communication."
+    },
+    "familias": {
+      "es": "Hogar: organizacion, gastos, compras, rutinas y cuidado.",
+      "en": "Households: planning, expenses, shopping, routines, and care."
+    },
+    "viajeros frecuentes": {
+      "es": "Viajan seguido: itinerarios, gastos, documentos y organizacion.",
+      "en": "Frequent travelers: itineraries, expenses, documents, and organization."
+    }
+  },
+  "problem": {
+    "gestion de ingresos": {
+      "es": "Registrar, prever y optimizar ingresos/cashflow con metricas claras.",
+      "en": "Track, forecast, and optimize revenue/cashflow with clear metrics."
+    },
+    "organizacion de tareas": {
+      "es": "Planificar, priorizar y ejecutar tareas/proyectos sin perder contexto.",
+      "en": "Plan, prioritize, and execute tasks/projects without losing context."
+    },
+    "captacion de clientes": {
+      "es": "Generar leads y convertirlos con funnels, outreach y seguimiento.",
+      "en": "Generate leads and convert them with funnels, outreach, and follow-ups."
+    },
+    "seguimiento de habitos": {
+      "es": "Crear habitos con recordatorios, streaks, tracking y feedback.",
+      "en": "Build habits with reminders, streaks, tracking, and feedback."
+    },
+    "planificacion de viajes": {
+      "es": "Itinerarios, reservas, checklist, mapas y coordinacion de grupo.",
+      "en": "Itineraries, bookings, checklists, maps, and group coordination."
+    },
+    "control de inventario": {
+      "es": "Stock en tiempo real, reposicion, alertas y movimientos.",
+      "en": "Real-time stock, replenishment, alerts, and movements."
+    },
+    "automatizacion de reportes": {
+      "es": "Reducir trabajo manual generando reportes desde multiples fuentes.",
+      "en": "Reduce manual work by generating reports from multiple sources."
+    },
+    "cumplimiento normativo": {
+      "es": "Gestionar compliance, politicas, auditorias y evidencias.",
+      "en": "Manage compliance, policies, audits, and evidence."
+    },
+    "retencion de clientes": {
+      "es": "Evitar churn mejorando onboarding, engagement y seguimiento.",
+      "en": "Reduce churn via onboarding, engagement, and follow-up."
+    },
+    "visibilidad de costos": {
+      "es": "Entender gasto por area/proyecto y detectar fugas.",
+      "en": "Understand spend by team/project and find leakage."
+    },
+    "formacion interna": {
+      "es": "Capacitar equipos con contenidos, seguimiento y evaluacion.",
+      "en": "Train teams with content, tracking, and assessment."
+    },
+    "alineacion de equipos": {
+      "es": "Alinear objetivos, prioridades y comunicacion para evitar drift.",
+      "en": "Align goals, priorities, and comms to avoid drift."
+    },
+    "gestionar citas": {
+      "es": "Agenda, disponibilidad, recordatorios, pagos y no-shows.",
+      "en": "Scheduling, availability, reminders, payments, and no-shows."
+    },
+    "analisis de datos": {
+      "es": "Transformar datos en insights accionables y dashboards.",
+      "en": "Turn data into actionable insights and dashboards."
+    },
+    "reduccion de tiempos": {
+      "es": "Eliminar cuellos de botella y automatizar pasos repetitivos.",
+      "en": "Remove bottlenecks and automate repetitive steps."
+    },
+    "soporte al cliente": {
+      "es": "Mejorar soporte: tickets, SLA, base de conocimiento y automatizaciones.",
+      "en": "Improve support: tickets, SLAs, knowledge base, and automation."
+    },
+    "seguridad de datos": {
+      "es": "Proteger datos: acceso, auditoria, cifrado y cumplimiento.",
+      "en": "Protect data: access, audit, encryption, and compliance."
+    },
+    "colaboracion remota": {
+      "es": "Trabajo async: docs, handoffs, decisiones y contexto compartido.",
+      "en": "Async work: docs, handoffs, decisions, and shared context."
+    },
+    "gestion de proveedores": {
+      "es": "Contratos, performance, pagos y seguimiento de proveedores.",
+      "en": "Vendor contracts, performance, payments, and tracking."
+    },
+    "optimizar conversion": {
+      "es": "Mejorar conversion: A/B tests, copy, funnel y friccion.",
+      "en": "Improve conversion: A/B tests, copy, funnel, and friction."
+    }
+  },
+  "productType": {
+    "saas": {
+      "es": "Software web por suscripcion, normalmente multi-tenant.",
+      "en": "Subscription web software, often multi-tenant."
+    },
+    "mobile app": {
+      "es": "App movil iOS/Android enfocada en uso frecuente.",
+      "en": "iOS/Android app optimized for frequent use."
+    },
+    "extension de navegador": {
+      "es": "Extension para Chrome/Firefox que vive en el flujo de navegacion.",
+      "en": "Chrome/Firefox extension embedded in the browsing workflow."
+    },
+    "dashboard": {
+      "es": "Panel para visualizar KPIs y tomar decisiones rapido.",
+      "en": "Dashboard to visualize KPIs and drive quick decisions."
+    },
+    "marketplace": {
+      "es": "Plataforma que conecta oferta/demanda con pagos y reputacion.",
+      "en": "Platform connecting supply/demand with payments and reputation."
+    },
+    "plugin": {
+      "es": "Componente instalable dentro de otra herramienta (CMS/IDE/CRM).",
+      "en": "Installable component inside another tool (CMS/IDE/CRM)."
+    },
+    "api": {
+      "es": "Producto API-first para integraciones y automatizacion.",
+      "en": "API-first product for integrations and automation."
+    },
+    "asistente": {
+      "es": "Asistente IA/conversacional para tareas repetitivas y soporte.",
+      "en": "AI/conversational assistant for repetitive tasks and support."
+    },
+    "crm": {
+      "es": "Gestion de relaciones con clientes y pipeline comercial.",
+      "en": "Customer relationship and sales pipeline management."
+    },
+    "erp": {
+      "es": "Suite para operaciones (finanzas, compras, inventario, etc.).",
+      "en": "Operations suite (finance, purchasing, inventory, etc.)."
+    },
+    "app de escritorio": {
+      "es": "Aplicacion desktop (Windows/Mac/Linux) para flujos locales.",
+      "en": "Desktop app (Windows/Mac/Linux) for local workflows."
+    },
+    "toolkit": {
+      "es": "Conjunto de herramientas pequenas enfocadas en un workflow.",
+      "en": "A set of small tools focused on a workflow."
+    },
+    "portal": {
+      "es": "Portal para usuarios/partners con accesos, recursos y acciones.",
+      "en": "Portal for users/partners with access, resources, and actions."
+    },
+    "plataforma de cursos": {
+      "es": "LMS para crear, vender y consumir cursos con progreso.",
+      "en": "LMS to create, sell, and consume courses with progress."
+    },
+    "motor de recomendacion": {
+      "es": "Recomendaciones personalizadas con ranking y senales.",
+      "en": "Personalized recommendations using ranking and signals."
+    },
+    "analitica": {
+      "es": "Analitica: tracking, metricas, dashboards y reportes.",
+      "en": "Analytics: tracking, metrics, dashboards, and reporting."
+    },
+    "automatizacion": {
+      "es": "Automatizacion de procesos con reglas, triggers y flujos.",
+      "en": "Process automation with rules, triggers, and workflows."
+    },
+    "gestor": {
+      "es": "Gestor especializado (tareas, activos, proyectos, contenido...).",
+      "en": "Specialized manager (tasks, assets, projects, content...)."
+    },
+    "widget": {
+      "es": "Widget embebible para anadir funcionalidad en otra web/app.",
+      "en": "Embeddable widget adding functionality to another app/site."
+    },
+    "template": {
+      "es": "Plantilla reutilizable para acelerar setup/entregables.",
+      "en": "Reusable template to speed up setup/deliverables."
+    }
+  },
+  "channel": {
+    "seo": {
+      "es": "Adquisicion organica via contenido y posicionamiento (SEO).",
+      "en": "Organic acquisition via content and search ranking (SEO)."
+    },
+    "comunidades": {
+      "es": "Crecimiento en comunidades (Slack/Discord/foros) con valor real.",
+      "en": "Growth via communities (Slack/Discord/forums) with real value."
+    },
+    "partnerships": {
+      "es": "Alianzas con productos complementarios (co-marketing/canales).",
+      "en": "Partnerships with complementary products (co-marketing/channels)."
+    },
+    "marketplaces": {
+      "es": "Distribucion en marketplaces (plugins, listings, templates).",
+      "en": "Distribution via marketplaces (plugins, listings, templates)."
+    },
+    "ads": {
+      "es": "Publicidad pagada con medicion de CAC/ROAS y optimizacion.",
+      "en": "Paid ads with CAC/ROAS tracking and optimization."
+    },
+    "cold email": {
+      "es": "Outbound frio con segmentacion, secuencias y personalizacion.",
+      "en": "Cold outbound with targeting, sequences, and personalization."
+    },
+    "content marketing": {
+      "es": "Contenido educativo y casos de uso para atraer demanda.",
+      "en": "Educational content and use cases to attract demand."
+    },
+    "product hunt": {
+      "es": "Lanzamiento y traccion inicial en Product Hunt.",
+      "en": "Launch and early traction via Product Hunt."
+    },
+    "eventos": {
+      "es": "Eventos presenciales/virtuales para networking y ventas.",
+      "en": "In-person/virtual events for networking and sales."
+    },
+    "linkedin": {
+      "es": "Contenido y outreach en LinkedIn, especialmente B2B.",
+      "en": "LinkedIn content and outreach, especially B2B."
+    },
+    "youtube": {
+      "es": "Video para awareness y adquisicion organica.",
+      "en": "Video content for awareness and organic acquisition."
+    },
+    "referidos": {
+      "es": "Programa de referidos/afiliados para crecimiento viral.",
+      "en": "Referral/affiliate program for viral growth."
+    },
+    "integraciones": {
+      "es": "Crecimiento via integraciones con herramientas populares.",
+      "en": "Growth via integrations with popular tools."
+    },
+    "embajadores": {
+      "es": "Embajadores/comunidad que promueven el producto en nichos.",
+      "en": "Ambassadors/community promoting the product in niches."
+    },
+    "webinars": {
+      "es": "Webinars y demos para educar y convertir leads.",
+      "en": "Webinars and demos to educate and convert leads."
+    },
+    "app stores": {
+      "es": "Distribucion en App Store/Play Store.",
+      "en": "Distribution via App Store/Play Store."
+    },
+    "marketplaces b2b": {
+      "es": "Listings en marketplaces B2B (AWS, Salesforce, etc.).",
+      "en": "Listings in B2B marketplaces (AWS, Salesforce, etc.)."
+    },
+    "influencers": {
+      "es": "Influencers/creadores en nicho para reach y credibilidad.",
+      "en": "Niche influencers/creators for reach and credibility."
+    },
+    "gitHub": {
+      "es": "Adquisicion dev-first via OSS, repos y comunidad.",
+      "en": "Dev-first growth via OSS, repos, and community."
+    },
+    "alianzas locales": {
+      "es": "Partners locales (agencias/camaras) para canal regional.",
+      "en": "Local alliances (agencies/chambers) for regional distribution."
+    }
+  }
+}

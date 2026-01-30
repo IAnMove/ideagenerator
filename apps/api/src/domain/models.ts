@@ -25,6 +25,7 @@ export interface IdeaConstraints {
 export interface IdeaRequest {
   language: LanguageCode;
   templateLevel: TemplateLevel;
+  architecture?: string;
   selections: {
     sector: SelectionConfig;
     audience: SelectionConfig;
@@ -87,6 +88,7 @@ export interface ResolvedSelections {
 export interface CodexPromptRequest {
   language: LanguageCode;
   templateLevel: TemplateLevel;
+  architecture?: string;
   idea: Idea;
   extraNotes?: string;
   constraints?: IdeaConstraints;

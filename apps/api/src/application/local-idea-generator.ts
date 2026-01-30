@@ -230,6 +230,11 @@ function scoreFromSeed(seed: string): number {
   return 6 + (hash % 5);
 }
 
+function formatArchitectureLabel(value: string): string {
+  const normalized = value.trim().replace(/[-_]+/g, " ");
+  return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
 function buildPrompt(
   language: "es" | "en",
   request: IdeaRequest,
@@ -237,20 +242,37 @@ function buildPrompt(
 ): { intro: string; technical: string } {
   const extra = request.extraNotes?.trim();
   const constraints = request.constraints;
+  const architecture = request.architecture?.trim();
+  const architectureMode =
+    architecture === "__llm_best__" ? "llm_best" : architecture ? "manual" : "ignore";
+  const architectureLabel =
+    architectureMode === "manual" && architecture
+      ? formatArchitectureLabel(architecture)
+      : null;
 
   const techLinesEs = [
-    "Objetivo: construir una app web siguiendo Clean Architecture y Clean Code.",
+    "Objetivo: construir una app web simple y mantenible con Clean Code (codigo facil de leer).",
     `Nivel de plantilla: ${request.templateLevel}.`,
-    "Incluye capas: domain, application, infrastructure, interface.",
+    ...(architectureMode === "manual" && architectureLabel
+      ? [`Arquitectura: ${architectureLabel}.`]
+      : architectureMode === "llm_best"
+        ? ["Arquitectura: elige la mejor opcion y justificala brevemente."]
+        : []),
+    "Si aplica, organiza en capas: domain, application, infrastructure, interface.",
     "Define endpoints, modelos de datos y validaciones.",
     "Agrega tests unitarios minimos para casos de uso.",
     "Entrega estructura de carpetas y README breve.",
   ];
 
   const techLinesEn = [
-    "Goal: build a web app following Clean Architecture and Clean Code.",
+    "Goal: build a simple, maintainable web app with Clean Code (easy-to-read code).",
     `Template level: ${request.templateLevel}.`,
-    "Include layers: domain, application, infrastructure, interface.",
+    ...(architectureMode === "manual" && architectureLabel
+      ? [`Architecture: ${architectureLabel}.`]
+      : architectureMode === "llm_best"
+        ? ["Architecture: choose the best option and justify it briefly."]
+        : []),
+    "If applicable, organize layers: domain, application, infrastructure, interface.",
     "Define endpoints, data models, and validations.",
     "Add minimal unit tests for use cases.",
     "Deliver folder structure and a short README.",

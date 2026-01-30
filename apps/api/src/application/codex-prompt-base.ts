@@ -1,10 +1,38 @@
 ﻿import type { Idea, IdeaConstraints, TemplateLevel } from "../domain/models.js";
 
-export function buildCodexBase(language: "es" | "en"): string {
+function formatArchitectureLabel(value: string): string {
+  const normalized = value.trim().replace(/[-_]+/g, " ");
+  return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+export function buildCodexBase(
+  language: "es" | "en",
+  architecture?: string,
+): string {
+  const archKey = architecture?.trim();
+  const architectureMode =
+    archKey === "__llm_best__" ? "llm_best" : archKey ? "manual" : "ignore";
+  const archLabel =
+    architectureMode === "manual" && archKey ? formatArchitectureLabel(archKey) : null;
+
   if (language === "en") {
+    const architectureLines =
+      architectureMode === "manual" && archKey && archLabel
+        ? [
+            `Target architecture: ${archLabel} (key: ${archKey}).`,
+            `Follow ${archLabel} and Clean Code.`,
+          ]
+        : architectureMode === "llm_best"
+          ? [
+              "Architecture: choose the best-fit option and justify it briefly in architecture.md.",
+              "Then implement the project accordingly.",
+            ]
+          : [];
+
     return [
       "You are Codex, a senior coding agent.",
-      "Build the project following Clean Architecture and Clean Code.",
+      "Build the project with simplicity + Clean Code (easy-to-read code).",
+      ...architectureLines,
       "Deliverables:",
       "- agent.md with rules for the coding agent",
       "- architecture.md with key decisions and system design",
@@ -20,9 +48,23 @@ export function buildCodexBase(language: "es" | "en"): string {
     ].join("\n");
   }
 
+  const architectureLines =
+    architectureMode === "manual" && archKey && archLabel
+      ? [
+          `Arquitectura objetivo: ${archLabel} (key: ${archKey}).`,
+          `Sigue ${archLabel} y Clean Code.`,
+        ]
+      : architectureMode === "llm_best"
+        ? [
+            "Arquitectura: elige la mejor opcion y justificala brevemente en architecture.md.",
+            "Luego implementa el proyecto en consecuencia.",
+          ]
+        : [];
+
   return [
     "Eres Codex, un agente de desarrollo senior.",
-    "Construye el proyecto siguiendo Clean Architecture y Clean Code.",
+    "Construye el proyecto con simplicidad + Clean Code (codigo facil de leer).",
+    ...architectureLines,
     "Entregables:",
     "- agent.md con reglas para el agente",
     "- architecture.md con decisiones clave y diseno del sistema",
@@ -44,6 +86,7 @@ export function formatIdeaContext(
   language: "es" | "en",
   extraNotes?: string,
   constraints?: IdeaConstraints,
+  architecture?: string,
 ): string {
   const labels =
     language === "en"
@@ -66,6 +109,7 @@ export function formatIdeaContext(
           retention: "Retention",
           risks: "Risks",
           template: "Template level",
+          architecture: "Architecture",
         }
       : {
           title: "Titulo",
@@ -86,6 +130,7 @@ export function formatIdeaContext(
           retention: "Retencion",
           risks: "Riesgos",
           template: "Nivel de plantilla",
+          architecture: "Arquitectura",
         };
 
   const lines = [
@@ -109,6 +154,12 @@ export function formatIdeaContext(
     `- ${labels.risks}: ${idea.risks}`,
     `- ${labels.template}: ${templateLevel}`,
   ];
+
+  const archKey = architecture?.trim();
+  if (archKey && archKey !== "__llm_best__") {
+    const archLabel = formatArchitectureLabel(archKey);
+    lines.push(`- ${labels.architecture}: ${archLabel} (key: ${archKey})`);
+  }
 
   if (constraints) {
     if (constraints.time?.trim()) {
