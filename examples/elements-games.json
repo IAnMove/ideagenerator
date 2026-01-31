@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "idea_system_prompt": {
+    "es": "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.",
+    "en": "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+  },
+  "idea_prompt": {
+    "es": "TAREA:\nGenera 3 ideas de JUEGOS y un prompt tecnico listo para un agente de codigo.\n\nREGLAS:\n- Devuelve SOLO JSON, siguiendo el schema exactamente.\n- Usa input.language para TODO el texto.\n- Selecciones: input.selections puede omitir keys.\n  - Si hay una seleccion con mode=manual: usa selection.value tal cual.\n  - Si falta una seleccion: sin restriccion; elige el mejor valor.\n- Para cada idea, incluye un objeto inputs con los valores elegidos.\n- Interpreta los campos asi:\n  - solution = propuesta de gameplay / core loop.\n  - differentiator = gancho unico del juego.\n  - mvp = features minimas jugables.\n  - prompt.technical = mini GDD (mecanicas, progreso, arte/sonido, UX, monetizacion si aplica).\n- Genera exactamente 3 ideas.\n- Si usas valores con underscores/guiones en el texto, conviertelos a espacios.\n\nSCHEMA:\n%schema%\n\nINPUT:\n%input%",
+    "en": "TASK:\nGenerate 3 GAME ideas and a technical prompt for a coding agent.\n\nRULES:\n- Output JSON only, matching the schema exactly.\n- Use input.language for all text.\n- Selections: input.selections may omit keys.\n  - If a selection is present with mode=manual: use selection.value as is.\n  - If a selection is missing: treat it as unconstrained and choose the best value.\n- For each idea, include an inputs object with chosen values.\n- Interpret fields as:\n  - solution = gameplay proposal / core loop.\n  - differentiator = unique hook.\n  - mvp = minimum playable features.\n  - prompt.technical = mini GDD (mechanics, progression, art/sound, UX, monetization if any).\n- Generate exactly 3 ideas.\n- If you use selection values with underscores/hyphens, convert to spaces.\n\nSCHEMA:\n%schema%\n\nINPUT:\n%input%"
+  },
+  "production_prompt": {
+    "es": "Eres un asistente senior. Usa el INPUT JSON para generar un prompt de ejecucion (GDD + plan tecnico) para construir el juego.\nINPUT JSON:\n%respuesta%",
+    "en": "You are a senior assistant. Use the INPUT JSON to generate an execution prompt (GDD + technical plan) to build the game.\nINPUT JSON:\n%response%"
+  },
+  "production_system_prompt": {
+    "es": "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.",
+    "en": "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+  },
+  "categories": [
+    {
+      "key": "genre",
+      "label": { "es": "Genero", "en": "Genre" },
+      "hint": { "es": "Ej: roguelike, puzzle, estrategia", "en": "Ex: roguelike, puzzle, strategy" },
+      "options": {
+        "roguelike": { "es": "Runs cortas, progresion meta y alta rejugabilidad.", "en": "Short runs, meta progression, high replayability." },
+        "puzzle": { "es": "Retos mentales y resolucion de problemas.", "en": "Mental challenges and problem solving." },
+        "strategy": { "es": "Planificacion, decisiones tacticas y gestion de recursos.", "en": "Planning, tactical decisions, resource management." },
+        "platformer": { "es": "Saltos y precision en niveles.", "en": "Jumping and precision in levels." },
+        "simulation": { "es": "Modelos de sistemas reales o ficticios.", "en": "Systems simulation of real or fictional worlds." },
+        "narrative_adventure": { "es": "Historia fuerte con decisiones o exploracion.", "en": "Strong story with choices or exploration." }
+      }
+    },
+    {
+      "key": "platform",
+      "label": { "es": "Plataforma", "en": "Platform" },
+      "hint": { "es": "Ej: mobile, pc, web", "en": "Ex: mobile, pc, web" },
+      "options": {
+        "mobile": { "es": "Jugable en iOS/Android con sesiones cortas.", "en": "Playable on iOS/Android with short sessions." },
+        "pc": { "es": "Experiencia mas profunda con teclado/raton.", "en": "Deeper experience with keyboard/mouse." },
+        "web": { "es": "Acceso instantaneo desde navegador.", "en": "Instant access in browser." },
+        "console": { "es": "Experiencia de sala, mando y couch co-op.", "en": "Living-room experience, controller, couch co-op." }
+      }
+    },
+    {
+      "key": "audience",
+      "label": { "es": "Publico", "en": "Audience" },
+      "hint": { "es": "Ej: casual, hardcore", "en": "Ex: casual, hardcore" },
+      "options": {
+        "casual": { "es": "Facil de entrar, sesiones cortas.", "en": "Easy to enter, short sessions." },
+        "core": { "es": "Jugadores habituales con expectativas medias.", "en": "Regular players with medium expectations." },
+        "hardcore": { "es": "Desafio alto y profundidad.", "en": "High challenge and depth." },
+        "families": { "es": "Apto para jugar en grupo y edades mixtas.", "en": "Suitable for mixed ages and group play." }
+      }
+    },
+    {
+      "key": "core_loop",
+      "label": { "es": "Core loop", "en": "Core loop" },
+      "hint": { "es": "Ej: explorar/coleccionar/mejorar", "en": "Ex: explore/collect/upgrade" },
+      "options": {
+        "explore_collect_upgrade": { "es": "Explorar -> recoger -> mejorar.", "en": "Explore -> collect -> upgrade." },
+        "battle_loot_progress": { "es": "Combatir -> botin -> progreso.", "en": "Battle -> loot -> progress." },
+        "build_manage_optimize": { "es": "Construir -> gestionar -> optimizar.", "en": "Build -> manage -> optimize." },
+        "solve_reward_unlock": { "es": "Resolver -> recompensar -> desbloquear.", "en": "Solve -> reward -> unlock." }
+      }
+    },
+    {
+      "key": "art_style",
+      "label": { "es": "Estilo visual", "en": "Art style" },
+      "hint": { "es": "Ej: pixel art, low poly", "en": "Ex: pixel art, low poly" },
+      "options": {
+        "pixel_art": { "es": "Retro y sencillo, facil de producir.", "en": "Retro and simple, easy to produce." },
+        "low_poly": { "es": "3D ligero con formas simples.", "en": "Lightweight 3D with simple shapes." },
+        "hand_drawn": { "es": "Ilustrado a mano, estilo artistico.", "en": "Hand-drawn, artistic style." },
+        "minimalist": { "es": "UI limpia y pocas formas/colores.", "en": "Clean UI with few shapes/colors." }
+      }
+    },
+    {
+      "key": "monetization",
+      "label": { "es": "Monetizacion", "en": "Monetization" },
+      "hint": { "es": "Ej: premium, ads", "en": "Ex: premium, ads" },
+      "options": {
+        "premium": { "es": "Pago unico por juego completo.", "en": "Single purchase for full game." },
+        "ads": { "es": "Gratis con anuncios opcionales.", "en": "Free with optional ads." },
+        "cosmetics": { "es": "Personalizacion estetica.", "en": "Cosmetic customization." },
+        "subscription": { "es": "Acceso continuo por suscripcion.", "en": "Ongoing access via subscription." }
+      }
+    },
+    {
+      "key": "multiplayer",
+      "label": { "es": "Multijugador", "en": "Multiplayer" },
+      "hint": { "es": "Ej: coop, competitivo", "en": "Ex: co-op, competitive" },
+      "options": {
+        "solo": { "es": "Experiencia individual.", "en": "Single-player experience." },
+        "coop": { "es": "Cooperativo entre amigos.", "en": "Co-op with friends." },
+        "competitive": { "es": "Competitivo con ranking.", "en": "Competitive with ranking." },
+        "async": { "es": "Interaccion asincrona.", "en": "Asynchronous interaction." }
+      }
+    }
+  ]
+}

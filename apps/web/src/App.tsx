@@ -375,6 +375,7 @@ type ProductionLlmInput = {
   language: LanguageCode;
   templateLevel: "basic" | "advanced";
   idea: Idea;
+  ideaPrompt?: { intro: string; technical: string };
   elements?: ElementsConfig;
   extraNotes?: string;
   constraints?: {
@@ -536,6 +537,7 @@ function buildProductionPayload(input: ProductionLlmInput): string {
       },
       inputs,
     },
+    ideaPrompt: input.ideaPrompt,
     inputsDetailed,
     constraints: removeEmpty(trimmedConstraints),
     extraNotes: input.extraNotes?.trim() || undefined,
@@ -980,7 +982,7 @@ export default function App() {
       ...prev,
       [name]: {
         mode,
-        value: mode === "manual" ? prev[name].value : "",
+        value: mode === "manual" ? (prev[name]?.value ?? "") : "",
       },
     }));
   };
@@ -989,14 +991,14 @@ export default function App() {
     setSelections((prev) => ({
       ...prev,
       [name]: {
-        ...prev[name],
+        ...(prev[name] ?? { mode: "manual", value: "" }),
         value,
       },
     }));
   };
 
   const addListItem = (name: ListName) => {
-    const value = newItems[name].trim();
+    const value = (newItems[name] ?? "").trim();
     if (!value) return;
     setElements((prev) => {
       const categories = prev.categories.map((category) => {
@@ -1061,7 +1063,7 @@ export default function App() {
 
   const canGenerate = useMemo(() => {
     return listOrder.every((name) => {
-      const config = selections[name];
+      const config = selections[name] ?? { mode: "decide", value: "" };
       if (config.mode === "manual") {
         return config.value.trim().length > 0;
       }
@@ -1213,6 +1215,7 @@ export default function App() {
         language,
         templateLevel,
         idea,
+        ideaPrompt: result?.prompt,
         elements,
         extraNotes: extraNotes.trim() || undefined,
         constraints: constraintsPayload,
@@ -1232,6 +1235,7 @@ export default function App() {
         language,
         templateLevel,
         idea,
+        ideaPrompt: result?.prompt,
         elements,
         extraNotes: extraNotes.trim() || undefined,
         constraints: constraintsPayload,
@@ -1373,6 +1377,8 @@ export default function App() {
                 formatKeyLabel(name);
               const hint = getLocalizedText(category?.hint, language) ?? "";
               const options = lists[name] ?? [];
+              const selection = selections[name] ?? { mode: "decide", value: "" };
+              const newItemValue = newItems[name] ?? "";
 
               return (
                 <div className="field" key={name}>
@@ -1384,7 +1390,7 @@ export default function App() {
                     <div className="mode">
                       <label>{t.mode}</label>
                       <select
-                        value={selections[name].mode}
+                        value={selection.mode}
                         onChange={(event) =>
                           handleModeChange(
                             name,
@@ -1400,11 +1406,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  {selections[name].mode === "manual" ? (
+                  {selection.mode === "manual" ? (
                     <>
                       <select
                         className="value-select"
-                        value={selections[name].value}
+                        value={selection.value}
                         onChange={(event) =>
                           handleValueChange(name, event.target.value)
                         }
@@ -1417,7 +1423,7 @@ export default function App() {
                         ))}
                       </select>
                       {(() => {
-                        const selected = selections[name].value;
+                        const selected = selection.value;
                         if (!selected) return null;
                         const description = getLocalizedText(
                           category?.options?.[selected],
@@ -1430,9 +1436,9 @@ export default function App() {
                     </>
                   ) : (
                     <div className="mode-note">
-                      {selections[name].mode === "decide"
+                      {selection.mode === "decide"
                         ? t.decide
-                        : selections[name].mode === "random"
+                        : selection.mode === "random"
                           ? t.randomNote
                           : t.none}
                     </div>
@@ -1441,7 +1447,7 @@ export default function App() {
                   <div className="adder">
                     <input
                       placeholder={t.addItem}
-                      value={newItems[name]}
+                      value={newItemValue}
                       onChange={(event) =>
                         setNewItems((prev) => ({
                           ...prev,

@@ -183,6 +183,7 @@ function buildProductionPayload(
       },
       inputs,
     },
+    ideaPrompt: request.ideaPrompt,
     inputsDetailed,
     constraints: sanitizeConstraints(request.constraints),
     extraNotes: request.extraNotes?.trim() || undefined,

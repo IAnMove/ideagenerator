@@ -75,6 +75,11 @@ export const IdeaSchema = Type.Object({
   risks: Type.String(),
 });
 
+const IdeaPromptSchema = Type.Object({
+  intro: Type.String(),
+  technical: Type.String(),
+});
+
 export const IdeaRequestSchema = Type.Object({
   language: Type.String({ minLength: 2 }),
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
@@ -93,6 +98,7 @@ export const CodexPromptRequestSchema = Type.Object({
   pattern: Type.Optional(Type.String({ minLength: 1 })),
   stack: Type.Optional(Type.String({ minLength: 1 })),
   idea: IdeaSchema,
+  ideaPrompt: Type.Optional(IdeaPromptSchema),
   elements: Type.Optional(ElementsSchema),
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),
