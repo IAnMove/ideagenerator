@@ -3,6 +3,7 @@
 export const SelectionModeSchema = Type.Union([
   Type.Literal("manual"),
   Type.Literal("decide"),
+  Type.Literal("random"),
   Type.Literal("ignore"),
 ]);
 

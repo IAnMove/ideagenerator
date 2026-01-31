@@ -3,7 +3,7 @@
 import type { ChangeEvent } from "react";
 import defaultOptions from "./data/default-options.json";
 
-type SelectionMode = "manual" | "decide" | "ignore";
+type SelectionMode = "manual" | "decide" | "random" | "ignore";
 
 type ListName = string;
 
@@ -357,22 +357,18 @@ function isProductionPromptResponse(
   return isRecord(value) && typeof value.prompt === "string";
 }
 
-type ChatLlmSelection = {
-  mode: SelectionMode;
-  value?: string;
-};
+type ChatPromptSelection = { mode: "manual"; value: string };
 
-type ChatLlmInput = {
+type ChatPromptInput = {
   language: LanguageCode;
   templateLevel: "basic" | "advanced";
-  elements: ElementsConfig;
   extraNotes?: string;
   constraints?: {
     time?: string;
     effort?: string;
     budget?: string;
   };
-  selections: Partial<Record<ListName, ChatLlmSelection>>;
+  selections: Partial<Record<ListName, ChatPromptSelection>>;
 };
 
 type ProductionLlmInput = {
@@ -621,10 +617,76 @@ function applyIdeaTemplate(
   return replaced;
 }
 
-function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
-  const system = resolveIdeaSystemPrompt(input.elements, language);
-  const template = resolveIdeaTemplate(input.elements, language);
-  const inputJson = JSON.stringify(input, null, 2);
+function pickRandomOption(options: string[]): string | undefined {
+  if (!options.length) return undefined;
+  const index = Math.floor(Math.random() * options.length);
+  return options[index];
+}
+
+function buildChatSelections(
+  selections: Record<ListName, SelectionConfig>,
+  listOrder: ListName[],
+  lists: Lists,
+): Partial<Record<ListName, ChatPromptSelection>> {
+  const selectionPayload: Partial<Record<ListName, ChatPromptSelection>> = {};
+
+  for (const name of listOrder) {
+    const config = selections[name];
+    if (!config || config.mode === "ignore") continue;
+
+    if (config.mode === "manual") {
+      const value = config.value.trim();
+      if (value) selectionPayload[name] = { mode: "manual", value };
+      continue;
+    }
+
+    if (config.mode === "random") {
+      const randomValue = pickRandomOption(lists[name] ?? []);
+      if (randomValue) {
+        selectionPayload[name] = { mode: "manual", value: randomValue };
+      }
+      continue;
+    }
+  }
+
+  return selectionPayload;
+}
+
+function buildApiSelections(
+  selections: Record<ListName, SelectionConfig>,
+  listOrder: ListName[],
+): Partial<Record<ListName, { mode: SelectionMode; value?: string }>> {
+  const selectionPayload: Partial<
+    Record<ListName, { mode: SelectionMode; value?: string }>
+  > = {};
+
+  for (const name of listOrder) {
+    const config = selections[name];
+    if (!config || config.mode === "ignore") continue;
+
+    if (config.mode === "manual") {
+      const value = config.value.trim();
+      if (value) selectionPayload[name] = { mode: "manual", value };
+      continue;
+    }
+
+    if (config.mode === "random") {
+      selectionPayload[name] = { mode: "random" };
+      continue;
+    }
+  }
+
+  return selectionPayload;
+}
+
+function buildChatPrompt(
+  language: LanguageCode,
+  elements: ElementsConfig,
+  input: ChatPromptInput,
+): string {
+  const system = resolveIdeaSystemPrompt(elements, language);
+  const template = resolveIdeaTemplate(elements, language);
+  const inputJson = JSON.stringify(removeEmpty(input as Record<string, unknown>), null, 2);
   const body = applyIdeaTemplate(template, ideaResponseSchema, inputJson);
   return [system, "", body].join("\n");
 }
@@ -642,6 +704,8 @@ const i18n = {
     mode: "Modo",
     manual: "Elegir",
     decide: "Decide tu",
+    random: "Aleatorio",
+    randomNote: "Aleatorio (elige uno al generar)",
     none: "Sin definir",
     addItem: "Agregar",
     extraNotes: "Notas extra (opcional)",
@@ -732,6 +796,8 @@ const i18n = {
     mode: "Mode",
     manual: "Choose",
     decide: "Decide",
+    random: "Random",
+    randomNote: "Random (picks one on generate)",
     none: "Undefined",
     addItem: "Add",
     extraNotes: "Extra notes (optional)",
@@ -1046,22 +1112,7 @@ export default function App() {
         budget: constraints.budget.trim() || undefined,
       };
 
-      const selectionsPayload: Partial<
-        Record<ListName, { mode: SelectionMode; value?: string }>
-      > = {};
-
-      for (const name of listOrder) {
-        const config = selections[name];
-
-        if (config.mode === "ignore") continue;
-
-        if (config.mode === "manual") {
-          selectionsPayload[name] = { mode: "manual", value: config.value };
-          continue;
-        }
-
-        selectionsPayload[name] = { mode: "decide" };
-      }
+      const selectionsPayload = buildApiSelections(selections, listOrder);
 
       const payload = {
         language,
@@ -1079,36 +1130,21 @@ export default function App() {
       };
 
       if (!llmEnabled) {
-        const selectionInput: Partial<Record<ListName, ChatLlmSelection>> = {};
+        const chatSelections = buildChatSelections(
+          selections,
+          listOrder,
+          lists,
+        );
 
-        for (const name of listOrder) {
-          const config = selections[name];
-
-          if (config.mode === "manual") {
-            selectionInput[name] = { mode: "manual", value: config.value };
-            continue;
-          }
-
-          if (config.mode === "decide") {
-            selectionInput[name] = { mode: "decide" };
-            continue;
-          }
-
-          if (config.mode === "ignore") {
-            continue;
-          }
-        }
-
-        const chatInput: ChatLlmInput = {
+        const chatInput: ChatPromptInput = {
           language,
           templateLevel,
-          elements,
           extraNotes: trimmedExtraNotes || undefined,
           constraints: constraintsPayload,
-          selections: selectionInput,
+          selections: chatSelections,
         };
 
-        setChatPrompt(buildChatPrompt(language, chatInput));
+        setChatPrompt(buildChatPrompt(language, elements, chatInput));
         return;
       }
 
@@ -1358,6 +1394,7 @@ export default function App() {
                       >
                         <option value="manual">{t.manual}</option>
                         <option value="decide">{t.decide}</option>
+                        <option value="random">{t.random}</option>
                         <option value="ignore">{t.none}</option>
                       </select>
                     </div>
@@ -1393,7 +1430,11 @@ export default function App() {
                     </>
                   ) : (
                     <div className="mode-note">
-                      {selections[name].mode === "decide" ? t.decide : t.none}
+                      {selections[name].mode === "decide"
+                        ? t.decide
+                        : selections[name].mode === "random"
+                          ? t.randomNote
+                          : t.none}
                     </div>
                   )}
 

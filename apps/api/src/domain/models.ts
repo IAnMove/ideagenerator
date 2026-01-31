@@ -24,7 +24,7 @@ export interface ElementsConfig {
   productionSystemPrompt?: PromptTemplate;
 }
 
-export type SelectionMode = "manual" | "decide" | "ignore";
+export type SelectionMode = "manual" | "decide" | "random" | "ignore";
 
 export interface SelectionConfig {
   mode: SelectionMode;

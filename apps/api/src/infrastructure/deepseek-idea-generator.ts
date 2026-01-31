@@ -32,7 +32,7 @@ export class DeepSeekIdeaGenerator implements IdeaGenerator {
     resolved: ResolvedSelections,
     llmOptions: LlmOptions,
   ): Promise<IdeaResponse> {
-    const input = buildLlmInput(request);
+    const input = buildLlmInput(request, resolved);
     const { system, user } = buildIdeaPromptMessages(input);
     const messages = [
       { role: "system", content: system },
@@ -93,6 +93,7 @@ function buildUrl(baseUrl: string): string {
 
 function buildLlmInput(
   request: IdeaRequest,
+  resolved: ResolvedSelections,
 ): LlmInput {
   const selections: Record<ListName, LlmSelection> = {};
 
@@ -104,14 +105,19 @@ function buildLlmInput(
       continue;
     }
 
-    selections[name] = { mode: "decide" };
+    if (config.mode === "random") {
+      const resolvedValue = resolved[name]?.trim();
+      if (resolvedValue) {
+        selections[name] = { mode: "manual", value: resolvedValue };
+      }
+      continue;
+    }
   }
 
   return {
     language: request.language,
     templateLevel: request.templateLevel,
     architecture: request.architecture?.trim() || undefined,
-    elements: request.elements,
     extraNotes: request.extraNotes,
     constraints: request.constraints,
     selections,
