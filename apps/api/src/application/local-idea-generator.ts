@@ -181,24 +181,24 @@ const validationPool = {
 const templates = {
   es: {
     title: (s: ResolvedSelections) =>
-      `${capitalize(s.productType)} para ${s.audience} en ${s.sector}`,
+      `${capitalize(getSelection(s, "productType", "idea"))} para ${getSelection(s, "audience", "personas")} en ${getSelection(s, "sector", "mercados")}`,
     oneLiner: (s: ResolvedSelections) =>
-      `${capitalize(s.productType)} que ayuda a ${s.audience} a mejorar ${s.problem} con enfoque en ${s.channel}.`,
+      `${capitalize(getSelection(s, "productType", "idea"))} que ayuda a ${getSelection(s, "audience", "personas")} a mejorar ${getSelection(s, "problem", "un problema frecuente")} con enfoque en ${getSelection(s, "channel", "canales organicos")}.`,
     solution: (s: ResolvedSelections) =>
-      `Centraliza ${s.problem} en un solo flujo con automatizaciones y seguimiento en tiempo real.`,
+      `Centraliza ${getSelection(s, "problem", "el flujo principal")} en un solo flujo con automatizaciones y seguimiento en tiempo real.`,
     intro: (s: ResolvedSelections) =>
-      `Aplicacion para ${s.audience} en el sector ${s.sector} que resuelve ${s.problem}. Se distribuye via ${s.channel} y prioriza un MVP rapido.`,
+      `Aplicacion para ${getSelection(s, "audience", "personas")} en el sector ${getSelection(s, "sector", "general")} que resuelve ${getSelection(s, "problem", "un problema frecuente")}. Se distribuye via ${getSelection(s, "channel", "canales organicos")} y prioriza un MVP rapido.`,
     technicalHeader: "Prompt tecnico:",
   },
   en: {
     title: (s: ResolvedSelections) =>
-      `${capitalize(s.productType)} for ${s.audience} in ${s.sector}`,
+      `${capitalize(getSelection(s, "productType", "idea"))} for ${getSelection(s, "audience", "users")} in ${getSelection(s, "sector", "general markets")}`,
     oneLiner: (s: ResolvedSelections) =>
-      `${capitalize(s.productType)} that helps ${s.audience} improve ${s.problem} with a ${s.channel} go-to-market.`,
+      `${capitalize(getSelection(s, "productType", "idea"))} that helps ${getSelection(s, "audience", "users")} improve ${getSelection(s, "problem", "a common pain")} with a ${getSelection(s, "channel", "direct")} go-to-market.`,
     solution: (_s: ResolvedSelections) =>
       "Centralizes the workflow with automation and real-time tracking.",
     intro: (s: ResolvedSelections) =>
-      `Application for ${s.audience} in the ${s.sector} space that solves ${s.problem}. Distributed via ${s.channel} with an MVP-first approach.`,
+      `Application for ${getSelection(s, "audience", "users")} in the ${getSelection(s, "sector", "general")} space that solves ${getSelection(s, "problem", "a common pain")}. Distributed via ${getSelection(s, "channel", "direct channels")} with an MVP-first approach.`,
     technicalHeader: "Technical prompt:",
   },
 } as const;
@@ -206,6 +206,15 @@ const templates = {
 function capitalize(value: string): string {
   if (!value) return value;
   return value[0].toUpperCase() + value.slice(1);
+}
+
+function getSelection(
+  selections: ResolvedSelections,
+  key: string,
+  fallback: string,
+): string {
+  const value = selections[key];
+  return value && value.trim() ? value : fallback;
 }
 
 function pickUnique(pool: readonly string[], count: number): string[] {
@@ -254,7 +263,9 @@ function buildPrompt(
   const stackConfig = request.selections.stack;
 
   const patternValue =
-    patternConfig && patternConfig.mode !== "ignore" ? selections.pattern : null;
+    patternConfig && patternConfig.mode !== "ignore"
+      ? selections.pattern
+      : null;
   const stackValue =
     stackConfig && stackConfig.mode !== "ignore" ? selections.stack : null;
 
@@ -334,7 +345,7 @@ function buildIdea(
   const template = templates[language];
   const angle = angles[language][index % angles[language].length];
   const scoreValue = scoreFromSeed(
-    `${selections.sector}-${selections.audience}-${index}`,
+    `${getSelection(selections, "sector", "general")}-${getSelection(selections, "audience", "users")}-${index}`,
   );
   const scoreReasons = pickUnique(scoreReasonsPool[language], 3);
   const pros = pickUnique(prosPool[language], 3);
@@ -345,9 +356,7 @@ function buildIdea(
   return {
     title: template.title(selections),
     oneLiner: template.oneLiner(selections),
-    sector: selections.sector,
-    audience: selections.audience,
-    problem: selections.problem,
+    inputs: selections,
     solution: template.solution(selections),
     differentiator:
       language === "es"

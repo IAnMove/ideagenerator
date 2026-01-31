@@ -95,13 +95,11 @@ export function formatIdeaContext(
       ? {
           title: "Title",
           oneLiner: "One-liner",
-          sector: "Sector",
-          audience: "Audience",
-          problem: "Problem",
           solution: "Solution",
           differentiator: "Differentiator",
           mvp: "MVP",
           score: "Score",
+          inputs: "Inputs",
           pain: "Pain/Frequency",
           pay: "Willingness to pay",
           alternatives: "Alternatives",
@@ -112,19 +110,15 @@ export function formatIdeaContext(
           risks: "Risks",
           template: "Template level",
           architecture: "Architecture",
-          pattern: "Pattern",
-          stack: "Stack",
         }
       : {
           title: "Titulo",
           oneLiner: "One-liner",
-          sector: "Sector",
-          audience: "Publico",
-          problem: "Problema",
           solution: "Solucion",
           differentiator: "Diferenciador",
           mvp: "MVP",
           score: "Puntuacion",
+          inputs: "Inputs",
           pain: "Dolor/Frecuencia",
           pay: "Disposicion a pagar",
           alternatives: "Alternativas",
@@ -135,17 +129,12 @@ export function formatIdeaContext(
           risks: "Riesgos",
           template: "Nivel de plantilla",
           architecture: "Arquitectura",
-          pattern: "Patron",
-          stack: "Stack",
         };
 
   const lines = [
     language === "en" ? "Selected idea:" : "Idea seleccionada:",
     `- ${labels.title}: ${idea.title}`,
     `- ${labels.oneLiner}: ${idea.oneLiner}`,
-    `- ${labels.sector}: ${idea.sector}`,
-    `- ${labels.audience}: ${idea.audience}`,
-    `- ${labels.problem}: ${idea.problem}`,
     `- ${labels.solution}: ${idea.solution}`,
     `- ${labels.differentiator}: ${idea.differentiator}`,
     `- ${labels.mvp}: ${idea.mvp.join(", ")}`,
@@ -167,16 +156,22 @@ export function formatIdeaContext(
     lines.push(`- ${labels.architecture}: ${archLabel} (key: ${archKey})`);
   }
 
+  const inputs: Record<string, string> = { ...(idea.inputs ?? {}) };
   const patternKey = pattern?.trim();
-  if (patternKey) {
-    const patternLabel = formatArchitectureLabel(patternKey);
-    lines.push(`- ${labels.pattern}: ${patternLabel} (key: ${patternKey})`);
+  if (patternKey && !inputs.pattern) {
+    inputs.pattern = patternKey;
+  }
+  const stackKey = stack?.trim();
+  if (stackKey && !inputs.stack) {
+    inputs.stack = stackKey;
   }
 
-  const stackKey = stack?.trim();
-  if (stackKey) {
-    const stackLabel = formatArchitectureLabel(stackKey);
-    lines.push(`- ${labels.stack}: ${stackLabel} (key: ${stackKey})`);
+  const inputEntries = Object.entries(inputs);
+  if (inputEntries.length > 0) {
+    lines.push(`- ${labels.inputs}:`);
+    for (const [key, value] of inputEntries) {
+      lines.push(`  - ${formatArchitectureLabel(key)}: ${value}`);
+    }
   }
 
   if (constraints) {

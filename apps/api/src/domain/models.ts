@@ -2,14 +2,7 @@
 export type TemplateLevel = "basic" | "advanced";
 export type LlmProvider = "deepseek" | "openai";
 
-export type ListName =
-  | "sector"
-  | "audience"
-  | "problem"
-  | "productType"
-  | "channel"
-  | "pattern"
-  | "stack";
+export type ListName = string;
 
 export type SelectionMode = "manual" | "decide" | "ignore";
 
@@ -50,9 +43,7 @@ export interface IdeaScore {
 export interface Idea {
   title: string;
   oneLiner: string;
-  sector: string;
-  audience: string;
-  problem: string;
+  inputs: Record<ListName, string>;
   solution: string;
   differentiator: string;
   mvp: string[];
@@ -81,15 +72,7 @@ export interface IdeaResponse {
   suggestedLanguage?: string;
 }
 
-export interface ResolvedSelections {
-  sector: string;
-  audience: string;
-  problem: string;
-  productType: string;
-  channel: string;
-  pattern: string;
-  stack: string;
-}
+export type ResolvedSelections = Record<ListName, string>;
 
 export interface CodexPromptRequest {
   language: LanguageCode;

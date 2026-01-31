@@ -30,9 +30,7 @@ export const ConstraintsSchema = Type.Object({
 export const IdeaSchema = Type.Object({
   title: Type.String(),
   oneLiner: Type.String(),
-  sector: Type.String(),
-  audience: Type.String(),
-  problem: Type.String(),
+  inputs: Type.Record(Type.String(), Type.String()),
   solution: Type.String(),
   differentiator: Type.String(),
   mvp: Type.Array(Type.String()),
@@ -56,17 +54,7 @@ export const IdeaRequestSchema = Type.Object({
   language: Type.String({ minLength: 2 }),
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
   architecture: Type.Optional(Type.String({ minLength: 1 })),
-  selections: Type.Partial(
-    Type.Object({
-      sector: SelectionConfigSchema,
-      audience: SelectionConfigSchema,
-      problem: SelectionConfigSchema,
-      productType: SelectionConfigSchema,
-      channel: SelectionConfigSchema,
-      pattern: SelectionConfigSchema,
-      stack: SelectionConfigSchema,
-    }),
-  ),
+  selections: Type.Record(Type.String(), SelectionConfigSchema),
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),
   llm: Type.Optional(LlmConfigSchema),
@@ -84,15 +72,7 @@ export const CodexPromptRequestSchema = Type.Object({
   llm: Type.Optional(LlmConfigSchema),
 });
 
-export const ListsSchema = Type.Object({
-  sector: Type.Array(Type.String()),
-  audience: Type.Array(Type.String()),
-  problem: Type.Array(Type.String()),
-  productType: Type.Array(Type.String()),
-  channel: Type.Array(Type.String()),
-  pattern: Type.Array(Type.String()),
-  stack: Type.Array(Type.String()),
-});
+export const ListsSchema = Type.Record(Type.String(), Type.Array(Type.String()));
 
 export const ListsUpdateSchema = Type.Object({
   lists: ListsSchema,

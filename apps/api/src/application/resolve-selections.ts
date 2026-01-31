@@ -20,41 +20,28 @@ export function resolveSelections(
   const language = request.language === "en" ? "en" : "es";
 
   const fallbackValue = (name: ListName): string => {
-    if (language === "en") {
-      switch (name) {
-        case "sector":
-          return "general";
-        case "audience":
-          return "users";
-        case "problem":
-          return "a common pain";
-        case "productType":
-          return "web app";
-        case "channel":
-          return "organic";
-        case "pattern":
-          return "ddd";
-        case "stack":
-          return "typescript";
-      }
-    }
+    const fallbackEn: Record<string, string> = {
+      sector: "general",
+      audience: "users",
+      problem: "a common pain",
+      productType: "web app",
+      channel: "organic",
+      pattern: "ddd",
+      stack: "typescript",
+    };
 
-    switch (name) {
-      case "sector":
-        return "general";
-      case "audience":
-        return "usuarios";
-      case "problem":
-        return "un problema frecuente";
-      case "productType":
-        return "app web";
-      case "channel":
-        return "organico";
-      case "pattern":
-        return "ddd";
-      case "stack":
-        return "typescript";
-    }
+    const fallbackEs: Record<string, string> = {
+      sector: "general",
+      audience: "usuarios",
+      problem: "un problema frecuente",
+      productType: "app web",
+      channel: "organico",
+      pattern: "ddd",
+      stack: "typescript",
+    };
+
+    const map = language === "en" ? fallbackEn : fallbackEs;
+    return map[name] ?? "general";
   };
 
   const pickOne = (items: string[]): string => {
@@ -62,8 +49,7 @@ export function resolveSelections(
     return items[Math.floor(Math.random() * items.length)] ?? "";
   };
 
-  const resolve = (name: ListName): string => {
-    const config: SelectionConfig | undefined = request.selections[name];
+  const resolve = (name: ListName, config?: SelectionConfig): string => {
     const list = (lists[name] ?? [])
       .map((item) => item.trim())
       .filter(Boolean);
@@ -80,15 +66,12 @@ export function resolveSelections(
     return picked || fallbackValue(name);
   };
 
-  const resolved: ResolvedSelections = {
-    sector: resolve("sector"),
-    audience: resolve("audience"),
-    problem: resolve("problem"),
-    productType: resolve("productType"),
-    channel: resolve("channel"),
-    pattern: resolve("pattern"),
-    stack: resolve("stack"),
-  };
+  const resolved: ResolvedSelections = {};
+
+  for (const [name, config] of Object.entries(request.selections ?? {})) {
+    if (config?.mode === "ignore") continue;
+    resolved[name] = resolve(name, config);
+  }
 
   return { resolved, llmOptions };
 }

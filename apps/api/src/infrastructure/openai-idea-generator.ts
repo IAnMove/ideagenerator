@@ -28,18 +28,8 @@ type LlmInput = {
     effort?: string;
     budget?: string;
   };
-  selections: Partial<Record<ListName, LlmSelection>>;
+  selections: Record<ListName, LlmSelection>;
 };
-
-const listNames: ListName[] = [
-  "sector",
-  "audience",
-  "problem",
-  "productType",
-  "channel",
-  "pattern",
-  "stack",
-];
 
 export class OpenAiIdeaGenerator implements IdeaGenerator {
   constructor(private readonly config: OpenAiConfig) {}
@@ -105,10 +95,9 @@ function buildUrl(baseUrl: string): string {
 function buildLlmInput(
   request: IdeaRequest,
 ): LlmInput {
-  const selections: Partial<Record<ListName, LlmSelection>> = {};
+  const selections: Record<ListName, LlmSelection> = {};
 
-  for (const name of listNames) {
-    const config = request.selections[name];
+  for (const [name, config] of Object.entries(request.selections ?? {})) {
     if (!config || config.mode === "ignore") continue;
 
     if (config.mode === "manual") {
@@ -139,9 +128,7 @@ function buildMessages(input: LlmInput) {
     {
       "title": "...",
       "oneLiner": "...",
-      "sector": "...",
-      "audience": "...",
-      "problem": "...",
+      "inputs": { "<category_key>": "..." },
       "solution": "...",
       "differentiator": "...",
       "mvp": ["...", "...", "..."],
@@ -174,6 +161,7 @@ function buildMessages(input: LlmInput) {
     "  - If a selection is present with mode=manual: use selection.value as is.",
     "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
     "  - If a selection is missing: treat it as unconstrained and choose the best value.",
+    "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
     "- Special selections:",
     "  - pattern: main architecture pattern (e.g., ddd, cqrs). If present, reflect it in prompt.technical.",
     "  - stack: target tech stack / language+framework (e.g., react_typescript, django_python). If present, prompt.technical MUST specify it explicitly.",

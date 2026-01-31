@@ -4,14 +4,7 @@ import defaultOptions from "./data/default-options.json";
 
 type SelectionMode = "manual" | "decide" | "ignore";
 
-type ListName =
-  | "sector"
-  | "audience"
-  | "problem"
-  | "productType"
-  | "channel"
-  | "pattern"
-  | "stack";
+type ListName = string;
 
 type SelectionConfig = {
   mode: SelectionMode;
@@ -23,9 +16,7 @@ type IdeaScore = { value: number; reasons: string[] };
 type Idea = {
   title: string;
   oneLiner: string;
-  sector: string;
-  audience: string;
-  problem: string;
+  inputs: Record<string, string>;
   solution: string;
   differentiator: string;
   mvp: string[];
@@ -112,6 +103,11 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (!isRecord(value)) return false;
+  return Object.values(value).every((item) => typeof item === "string");
+}
+
 function isIdeaScore(value: unknown): value is IdeaScore {
   if (!isRecord(value)) return false;
   return typeof value.value === "number" && isStringArray(value.reasons);
@@ -122,9 +118,7 @@ function isIdea(value: unknown): value is Idea {
   return (
     typeof value.title === "string" &&
     typeof value.oneLiner === "string" &&
-    typeof value.sector === "string" &&
-    typeof value.audience === "string" &&
-    typeof value.problem === "string" &&
+    isStringRecord(value.inputs) &&
     typeof value.solution === "string" &&
     typeof value.differentiator === "string" &&
     isStringArray(value.mvp) &&
@@ -186,9 +180,7 @@ const ideaResponseSchema = `{
     {
       "title": "...",
       "oneLiner": "...",
-      "sector": "...",
-      "audience": "...",
-      "problem": "...",
+      "inputs": { "<category_key>": "..." },
       "solution": "...",
       "differentiator": "...",
       "mvp": ["...", "...", "..."],
@@ -264,6 +256,7 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - If a selection is present with mode=manual: use selection.value as is.",
           "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
           "  - If a selection is missing: treat it as unconstrained and choose the best value.",
+          "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
           "- Special selections:",
           "  - pattern: main architecture pattern (e.g., ddd, cqrs). If present, reflect it in prompt.technical.",
           "  - stack: target tech stack / language+framework (e.g., react_typescript, django_python). If present, prompt.technical MUST specify it explicitly.",
@@ -283,6 +276,7 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - Si hay una seleccion con mode=manual: usa selection.value tal cual.",
           "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
           "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
+          "- Para cada idea, incluye un objeto inputs con los valores elegidos para las keys de selecciones.",
           "- Selecciones especiales:",
           "  - pattern: patron de arquitectura principal (ej: ddd, cqrs). Si esta, reflejalo en prompt.technical.",
           "  - stack: stack objetivo / lenguaje+framework (ej: react_typescript, django_python). Si esta, prompt.technical DEBE especificarlo explicitamente.",
@@ -584,6 +578,8 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const t = i18n[language];
+  const listLabels = t.listLabels as Record<string, string>;
+  const listHints = t.listHints as Record<string, string>;
   const resultsHint = result ? t.selectIdeaHint : chatPrompt ? t.chatPromptHint : t.subtitle;
   const trimmedArchitecture = architecture.trim();
   const architectureMode =
@@ -983,8 +979,8 @@ export default function App() {
               <div className="field" key={name}>
                 <div className="field-title">
                   <div>
-                    <strong>{t.listLabels[name]}</strong>
-                    <span>{t.listHints[name]}</span>
+                    <strong>{listLabels[name] ?? formatKeyLabel(name)}</strong>
+                    <span>{listHints[name] ?? ""}</span>
                   </div>
                   <div className="mode">
                     <label>{t.mode}</label>
