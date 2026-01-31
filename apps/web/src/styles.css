@@ -66,6 +66,16 @@ p {
   animation: fadeUp 0.6s ease both;
 }
 
+.page-tabs {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.page-tabs .toggle {
+  max-width: 320px;
+  width: 100%;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -131,6 +141,38 @@ p {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+.knowhow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.knowhow-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.knowhow-step {
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.knowhow-step ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.knowhow-step li {
+  margin-bottom: 6px;
 }
 
 .panel {

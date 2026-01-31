@@ -375,7 +375,7 @@ type ProductionLlmInput = {
   language: LanguageCode;
   templateLevel: "basic" | "advanced";
   idea: Idea;
-  ideaPrompt?: { intro: string; technical: string };
+  promptInicial?: { intro: string; technical: string };
   elements?: ElementsConfig;
   extraNotes?: string;
   constraints?: {
@@ -537,7 +537,7 @@ function buildProductionPayload(input: ProductionLlmInput): string {
       },
       inputs,
     },
-    ideaPrompt: input.ideaPrompt,
+    promptInicial: input.promptInicial,
     inputsDetailed,
     constraints: removeEmpty(trimmedConstraints),
     extraNotes: input.extraNotes?.trim() || undefined,
@@ -698,6 +698,43 @@ const i18n = {
     appName: "Idea Forge",
     subtitle:
       "Genera 3 ideas prometedoras y un prompt tecnico listo para construir.",
+    navApp: "App",
+    navKnowHow: "Como usar",
+    knowHowTitle: "Como usar Idea Forge",
+    knowHowSubtitle:
+      "Guia rapida para crear tus propios generadores con JSON de elementos.",
+    knowHowSteps: [
+      {
+        title: "1) Configura el JSON de elementos",
+        items: [
+          "Importa un JSON custom o usa el default.",
+          "Cada categoria define su key, label y opciones.",
+          "Puedes exportar, editar y volver a importar.",
+        ],
+      },
+      {
+        title: "2) Selecciona el modo por categoria",
+        items: [
+          "Manual: eliges el valor exacto.",
+          "Aleatorio: el sistema elige uno al generar.",
+          "Sin definir: no se incluye en el prompt.",
+        ],
+      },
+      {
+        title: "3) Genera ideas",
+        items: [
+          "Activa LLM para generar dentro de la app.",
+          "O desactivalo y copia el prompt para tu chat.",
+        ],
+      },
+      {
+        title: "4) Prompt de produccion",
+        items: [
+          "Selecciona una idea para crear el prompt final.",
+          "Si estas en modo manual, pega la respuesta JSON del LLM.",
+        ],
+      },
+    ],
     language: "Idioma",
     template: "Nivel de plantilla",
     templateBasic: "Basica",
@@ -790,6 +827,43 @@ const i18n = {
     appName: "Idea Forge",
     subtitle:
       "Generate 3 promising ideas and a technical prompt ready to build.",
+    navApp: "App",
+    navKnowHow: "Know-how",
+    knowHowTitle: "How to use Idea Forge",
+    knowHowSubtitle:
+      "Quick guide to build your own generators with elements JSON.",
+    knowHowSteps: [
+      {
+        title: "1) Configure the elements JSON",
+        items: [
+          "Import a custom JSON or use the default.",
+          "Each category defines its key, label, and options.",
+          "You can export, edit, and re-import.",
+        ],
+      },
+      {
+        title: "2) Choose a mode per category",
+        items: [
+          "Manual: you pick the exact value.",
+          "Random: the system picks one on generate.",
+          "Undefined: it will be omitted from the prompt.",
+        ],
+      },
+      {
+        title: "3) Generate ideas",
+        items: [
+          "Enable LLM to generate inside the app.",
+          "Or disable it and copy the prompt to your chat.",
+        ],
+      },
+      {
+        title: "4) Production prompt",
+        items: [
+          "Select an idea to build the final prompt.",
+          "If manual, paste the LLM JSON response.",
+        ],
+      },
+    ],
     language: "Language",
     template: "Template level",
     templateBasic: "Basic",
@@ -882,6 +956,7 @@ const i18n = {
 
 export default function App() {
   const [language, setLanguage] = useState<LanguageCode>("es");
+  const [page, setPage] = useState<"app" | "knowhow">("app");
   const [templateLevel, setTemplateLevel] = useState<"basic" | "advanced">(
     "basic",
   );
@@ -1215,7 +1290,7 @@ export default function App() {
         language,
         templateLevel,
         idea,
-        ideaPrompt: result?.prompt,
+        promptInicial: result?.prompt,
         elements,
         extraNotes: extraNotes.trim() || undefined,
         constraints: constraintsPayload,
@@ -1235,7 +1310,7 @@ export default function App() {
         language,
         templateLevel,
         idea,
-        ideaPrompt: result?.prompt,
+        promptInicial: result?.prompt,
         elements,
         extraNotes: extraNotes.trim() || undefined,
         constraints: constraintsPayload,
@@ -1351,7 +1426,48 @@ export default function App() {
         </div>
       </header>
 
-      <main className="layout">
+      <div className="page-tabs">
+        <div className="toggle">
+          <button
+            className={page === "app" ? "active" : ""}
+            onClick={() => setPage("app")}
+            type="button"
+          >
+            {t.navApp}
+          </button>
+          <button
+            className={page === "knowhow" ? "active" : ""}
+            onClick={() => setPage("knowhow")}
+            type="button"
+          >
+            {t.navKnowHow}
+          </button>
+        </div>
+      </div>
+
+      {page === "knowhow" ? (
+        <main className="layout">
+          <section className="panel knowhow">
+            <div className="panel-header">
+              <h2>{t.knowHowTitle}</h2>
+            </div>
+            <p className="subtitle">{t.knowHowSubtitle}</p>
+            <div className="knowhow-grid">
+              {t.knowHowSteps.map((step) => (
+                <div className="knowhow-step" key={step.title}>
+                  <h3>{step.title}</h3>
+                  <ul>
+                    {step.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+        </main>
+      ) : (
+        <main className="layout">
         <section className="panel">
           <div className="panel-header">
             <h2>{t.selections}</h2>
@@ -1933,6 +2049,7 @@ export default function App() {
           )}
         </section>
       </main>
+      )}
     </div>
   );
 }

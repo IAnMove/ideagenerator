@@ -75,7 +75,7 @@ export const IdeaSchema = Type.Object({
   risks: Type.String(),
 });
 
-const IdeaPromptSchema = Type.Object({
+const PromptInicialSchema = Type.Object({
   intro: Type.String(),
   technical: Type.String(),
 });
@@ -98,7 +98,7 @@ export const CodexPromptRequestSchema = Type.Object({
   pattern: Type.Optional(Type.String({ minLength: 1 })),
   stack: Type.Optional(Type.String({ minLength: 1 })),
   idea: IdeaSchema,
-  ideaPrompt: Type.Optional(IdeaPromptSchema),
+  promptInicial: Type.Optional(PromptInicialSchema),
   elements: Type.Optional(ElementsSchema),
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),

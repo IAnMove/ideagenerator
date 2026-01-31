@@ -102,7 +102,7 @@ export interface CodexPromptRequest {
   pattern?: string;
   stack?: string;
   idea: Idea;
-  ideaPrompt?: IdeaPrompt;
+  promptInicial?: IdeaPrompt;
   elements?: ElementsConfig;
   extraNotes?: string;
   constraints?: IdeaConstraints;
