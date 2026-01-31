@@ -45,6 +45,10 @@ type CodexPromptResponse = {
   prompt: string;
 };
 
+type ProductionPromptResponse = {
+  prompt: string;
+};
+
 type Lists = Record<ListName, string[]>;
 
 type LanguageCode = "es" | "en";
@@ -61,6 +65,15 @@ type LocalizedText = Record<string, string>;
 
 type LocalizedDescriptions = Record<string, LocalizedText>;
 
+type ProductionPromptTemplate = string | LocalizedText;
+
+type InputsDetail = {
+  value: string;
+  label?: string;
+  hint?: string;
+  description?: string;
+};
+
 type ElementCategory = {
   key: string;
   label?: LocalizedText;
@@ -71,12 +84,29 @@ type ElementCategory = {
 type ElementsConfig = {
   version: 1;
   categories: ElementCategory[];
+  productionPrompt?: ProductionPromptTemplate;
 };
 
 const ELEMENTS_STORAGE_KEY = "idea-forge.elements.v1";
 
 const defaultElements: ElementsConfig = {
   version: 1,
+  productionPrompt: {
+    es: [
+      "Eres un asistente senior. Usa el INPUT JSON para generar un prompt de ejecucion que permita construir el resultado final.",
+      "Si la idea implica software, incluye arquitectura, stack, estructura de carpetas, endpoints, modelos de datos, validaciones, tests minimos y un README breve.",
+      "Si no implica software, entrega un plan paso a paso con entregables, riesgos/mitigaciones y metricas.",
+      "INPUT JSON:",
+      "%respuesta%",
+    ].join("\n"),
+    en: [
+      "You are a senior assistant. Use the INPUT JSON to generate an execution prompt that enables the final outcome.",
+      "If the idea implies software, include architecture, stack, folder structure, endpoints, data models, validations, minimal tests, and a short README.",
+      "If it is non-software, provide a step-by-step plan with deliverables, risks/mitigations, and metrics.",
+      "INPUT JSON:",
+      "%response%",
+    ].join("\n"),
+  },
   categories: [
     {
       key: "sector",
@@ -165,6 +195,12 @@ function isStringRecord(value: unknown): value is Record<string, string> {
   return Object.values(value).every((item) => typeof item === "string");
 }
 
+function isProductionPromptTemplate(
+  value: unknown,
+): value is ProductionPromptTemplate {
+  return typeof value === "string" || isStringRecord(value);
+}
+
 function isLocalizedDescriptions(value: unknown): value is LocalizedDescriptions {
   if (!isRecord(value)) return false;
   return Object.values(value).every(isStringRecord);
@@ -187,6 +223,17 @@ function isElementsConfig(value: unknown): value is ElementsConfig {
   if (value.version !== 1) return false;
   if (!Array.isArray(value.categories)) return false;
 
+  const promptValue =
+    (value as { productionPrompt?: unknown }).productionPrompt ??
+    (value as { production_prompt?: unknown }).production_prompt;
+
+  if (
+    promptValue !== undefined &&
+    !isProductionPromptTemplate(promptValue)
+  ) {
+    return false;
+  }
+
   const keys = new Set<string>();
 
   for (const category of value.categories) {
@@ -200,6 +247,18 @@ function isElementsConfig(value: unknown): value is ElementsConfig {
   }
 
   return true;
+}
+
+function normalizeElementsConfig(value: ElementsConfig): ElementsConfig {
+  const legacy = value as ElementsConfig & {
+    production_prompt?: ProductionPromptTemplate;
+  };
+
+  if (!legacy.productionPrompt && legacy.production_prompt) {
+    return { ...legacy, productionPrompt: legacy.production_prompt };
+  }
+
+  return value;
 }
 
 function buildSelectionState(
@@ -269,6 +328,12 @@ function isIdeaResponse(value: unknown): value is IdeaResponse {
   return true;
 }
 
+function isProductionPromptResponse(
+  value: unknown,
+): value is ProductionPromptResponse {
+  return isRecord(value) && typeof value.prompt === "string";
+}
+
 type ChatLlmSelection = {
   mode: SelectionMode;
   value?: string;
@@ -285,6 +350,19 @@ type ChatLlmInput = {
     budget?: string;
   };
   selections: Partial<Record<ListName, ChatLlmSelection>>;
+};
+
+type ProductionLlmInput = {
+  language: LanguageCode;
+  templateLevel: "basic" | "advanced";
+  idea: Idea;
+  elements?: ElementsConfig;
+  extraNotes?: string;
+  constraints?: {
+    time?: string;
+    effort?: string;
+    budget?: string;
+  };
 };
 
 const ideaResponseSchema = `{
@@ -312,6 +390,156 @@ const ideaResponseSchema = `{
   ],
   "prompt": { "intro": "...", "technical": "..." }
 }`;
+
+const productionPromptSchema = `{
+  "prompt": "..."
+}`;
+
+function resolveProductionTemplate(
+  elements: ElementsConfig | undefined,
+  language: LanguageCode,
+): string {
+  const template = elements?.productionPrompt ?? defaultElements.productionPrompt;
+  if (typeof template === "string") return template;
+  return getLocalizedText(template, language) ?? "";
+}
+
+function buildInputsDetailed(
+  inputs: Record<string, string>,
+  elements: ElementsConfig | undefined,
+  language: LanguageCode,
+): Record<string, InputsDetail> | undefined {
+  if (!elements) return undefined;
+  const categories = new Map(
+    elements.categories.map((category) => [category.key, category]),
+  );
+  const result: Record<string, InputsDetail> = {};
+
+  for (const [key, value] of Object.entries(inputs)) {
+    const category = categories.get(key);
+    const detail: InputsDetail = { value };
+
+    if (category) {
+      const label = getLocalizedText(category.label, language);
+      const hint = getLocalizedText(category.hint, language);
+      const option = category.options?.[value];
+      const description = getLocalizedText(option, language);
+
+      if (label) detail.label = label;
+      if (hint) detail.hint = hint;
+      if (description) detail.description = description;
+    }
+
+    result[key] = detail;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function buildProductionPayload(input: ProductionLlmInput): string {
+  const constraints = input.constraints;
+  const trimmedConstraints = {
+    time: constraints?.time?.trim() || undefined,
+    effort: constraints?.effort?.trim() || undefined,
+    budget: constraints?.budget?.trim() || undefined,
+  };
+
+  const inputs = { ...(input.idea.inputs ?? {}) };
+  const inputsDetailed = buildInputsDetailed(
+    inputs,
+    input.elements,
+    input.language,
+  );
+
+  const payload = {
+    language: input.language,
+    templateLevel: input.templateLevel,
+    idea: {
+      title: input.idea.title,
+      oneLiner: input.idea.oneLiner,
+      solution: input.idea.solution,
+      differentiator: input.idea.differentiator,
+      mvp: input.idea.mvp,
+      score: input.idea.score,
+      pros: input.idea.pros,
+      cons: input.idea.cons,
+      validation: {
+        painFrequency: input.idea.painFrequency,
+        willingnessToPay: input.idea.willingnessToPay,
+        alternatives: input.idea.alternatives,
+        roiImpact: input.idea.roiImpact,
+        adoptionFriction: input.idea.adoptionFriction,
+        acquisition: input.idea.acquisition,
+        retention: input.idea.retention,
+        risks: input.idea.risks,
+      },
+      inputs,
+    },
+    inputsDetailed,
+    constraints: removeEmpty(trimmedConstraints),
+    extraNotes: input.extraNotes?.trim() || undefined,
+  };
+
+  return JSON.stringify(removeEmpty(payload), null, 2);
+}
+
+function buildProductionChatPrompt(
+  language: LanguageCode,
+  template: string,
+  payload: string,
+): string {
+  const system =
+    language === "en"
+      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.";
+
+  const rules =
+    language === "en"
+      ? [
+          "TASK:",
+          "You are a prompt engineer. Produce the final production prompt for another LLM to execute the idea.",
+          "Use the TEMPLATE as the base. Replace %response% or %respuesta% with the INPUT JSON.",
+          "If the template lacks the placeholder, append the INPUT JSON at the end.",
+          "Do NOT execute the idea. Output only the prompt.",
+          "Return ONLY JSON with this schema:",
+          productionPromptSchema,
+        ]
+      : [
+          "TAREA:",
+          "Eres un prompt engineer. Genera el prompt de produccion final para que otro LLM ejecute la idea.",
+          "Usa el TEMPLATE como base. Sustituye %respuesta% o %response% por el INPUT JSON.",
+          "Si el template no incluye el placeholder, agrega el INPUT JSON al final.",
+          "No ejecutes la idea. Devuelve solo el prompt.",
+          "Devuelve SOLO JSON con este schema:",
+          productionPromptSchema,
+        ];
+
+  return [
+    system,
+    "",
+    ...rules,
+    "",
+    "TEMPLATE:",
+    template,
+    "",
+    "INPUT JSON:",
+    payload,
+  ].join("\n");
+}
+
+function removeEmpty<T extends Record<string, unknown>>(value: T): T {
+  const entries = Object.entries(value).filter(([, entry]) => {
+    if (entry === undefined || entry === null) return false;
+    if (typeof entry === "string" && entry.trim() === "") return false;
+    if (typeof entry === "object") {
+      if (Array.isArray(entry)) return entry.length > 0;
+      return Object.keys(entry as Record<string, unknown>).length > 0;
+    }
+    return true;
+  });
+
+  return Object.fromEntries(entries) as T;
+}
 
 function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
   const system =
@@ -424,10 +652,23 @@ const i18n = {
     llmDisabledHint: "Desactivado = genera un prompt para pegar en un chat con un LLM",
     providerDeepSeek: "DeepSeek",
     providerOpenAi: "OpenAI",
-    selectIdeaHint: "Selecciona una idea para generar el prompt de Codex.",
-    codexPrompt: "Prompt para Codex",
-    codexGenerating: "Optimizando prompt...",
-    codexEmpty: "Selecciona una idea para generar el prompt.",
+    selectIdeaHint: "Selecciona una idea para generar el prompt de produccion.",
+    codexPrompt: "Prompt de produccion",
+    codexGenerating: "Generando prompt de produccion...",
+    codexEmpty:
+      "Selecciona una idea o pega la respuesta del LLM para ver el prompt de produccion.",
+    productionChatTitle: "Prompt para generar el prompt de produccion",
+    productionChatHint:
+      "Copia y pega esto en tu LLM. Debe devolver JSON con {\"prompt\":\"...\"}.",
+    productionChatEmpty: "Selecciona una idea para generar el prompt.",
+    productionImportTitle: "Pegar respuesta de prompt de produccion",
+    productionImportHint:
+      "Pega aqui el JSON devuelto por el LLM (sin markdown) para ver el prompt final.",
+    productionImportPlaceholder: "Pega aqui la respuesta JSON del LLM...",
+    productionImportLoad: "Cargar",
+    productionImportClear: "Limpiar",
+    productionImportInvalid:
+      "JSON invalido o no sigue el schema. Asegurate de pegar SOLO el JSON del output.",
     chatPromptTitle: "Prompt para LLM (chat)",
     chatPromptHint:
       "Copia y pega este prompt en tu LLM. Pidele que devuelva solo JSON.",
@@ -500,10 +741,23 @@ const i18n = {
     llmDisabledHint: "Disabled = generates a prompt to paste into an LLM chat",
     providerDeepSeek: "DeepSeek",
     providerOpenAi: "OpenAI",
-    selectIdeaHint: "Select an idea to generate the Codex prompt.",
-    codexPrompt: "Codex prompt",
-    codexGenerating: "Optimizing prompt...",
-    codexEmpty: "Select an idea to generate the prompt.",
+    selectIdeaHint: "Select an idea to generate the production prompt.",
+    codexPrompt: "Production prompt",
+    codexGenerating: "Generating production prompt...",
+    codexEmpty:
+      "Select an idea or paste the LLM response to view the production prompt.",
+    productionChatTitle: "Prompt to generate the production prompt",
+    productionChatHint:
+      "Copy/paste this into your LLM. It must return JSON with {\"prompt\":\"...\"}.",
+    productionChatEmpty: "Select an idea to generate the prompt.",
+    productionImportTitle: "Paste production prompt response",
+    productionImportHint:
+      "Paste the JSON returned by the LLM (no markdown) to view the final prompt.",
+    productionImportPlaceholder: "Paste the LLM JSON response here...",
+    productionImportLoad: "Load",
+    productionImportClear: "Clear",
+    productionImportInvalid:
+      "Invalid JSON or schema mismatch. Make sure you paste ONLY the JSON output.",
     chatPromptTitle: "Chat LLM prompt",
     chatPromptHint:
       "Copy/paste this into your LLM. Ask it to return JSON only.",
@@ -585,6 +839,13 @@ export default function App() {
   const [chatPromptCopied, setChatPromptCopied] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [importJsonError, setImportJsonError] = useState<string | null>(null);
+  const [productionChatPrompt, setProductionChatPrompt] = useState("");
+  const [productionChatPromptCopied, setProductionChatPromptCopied] =
+    useState(false);
+  const [productionImportJson, setProductionImportJson] = useState("");
+  const [productionImportError, setProductionImportError] = useState<string | null>(
+    null,
+  );
   const [llmEnabled, setLlmEnabled] = useState(false);
   const [llmProvider, setLlmProvider] = useState<LlmProvider>("deepseek");
   const [llmModel, setLlmModel] = useState("");
@@ -605,8 +866,9 @@ export default function App() {
     try {
       const parsed = safeParseJson(raw);
       if (isElementsConfig(parsed)) {
-        setElements(parsed);
-        setElementsJson(JSON.stringify(parsed, null, 2));
+        const normalized = normalizeElementsConfig(parsed);
+        setElements(normalized);
+        setElementsJson(JSON.stringify(normalized, null, 2));
       } else {
         localStorage.removeItem(ELEMENTS_STORAGE_KEY);
       }
@@ -675,7 +937,8 @@ export default function App() {
       if (!isElementsConfig(parsed)) {
         throw new Error(t.elementsInvalid);
       }
-      setElements(parsed);
+      const normalized = normalizeElementsConfig(parsed);
+      setElements(normalized);
       setElementsError(null);
     } catch (err) {
       const message = (err as Error).message || t.elementsInvalid;
@@ -722,6 +985,10 @@ export default function App() {
     setCodexPrompt("");
     setCodexError(null);
     setCopied(false);
+    setProductionChatPrompt("");
+    setProductionChatPromptCopied(false);
+    setProductionImportJson("");
+    setProductionImportError(null);
   };
 
   const buildHeaders = () => {
@@ -867,22 +1134,46 @@ export default function App() {
 
   const handleSelectIdea = async (idea: Idea, index: number) => {
     setSelectedIdeaIndex(index);
-    setCodexLoading(true);
     setCodexError(null);
     setCodexPrompt("");
     setCopied(false);
+    setCodexLoading(false);
+    setProductionImportJson("");
+    setProductionImportError(null);
+    setProductionChatPromptCopied(false);
+
+    const constraintsPayload = {
+      time: constraints.time.trim() || undefined,
+      effort: constraints.effort.trim() || undefined,
+      budget: constraints.budget.trim() || undefined,
+    };
+
+    if (!llmEnabled) {
+      const template = resolveProductionTemplate(elements, language);
+      const payload = buildProductionPayload({
+        language,
+        templateLevel,
+        idea,
+        elements,
+        extraNotes: extraNotes.trim() || undefined,
+        constraints: constraintsPayload,
+      });
+      setProductionChatPrompt(buildProductionChatPrompt(language, template, payload));
+      setCodexLoading(false);
+      return;
+    }
+
+    setProductionChatPrompt("");
+    setCodexLoading(true);
 
     try {
       const payload = {
         language,
         templateLevel,
         idea,
+        elements,
         extraNotes: extraNotes.trim() || undefined,
-        constraints: {
-          time: constraints.time.trim() || undefined,
-          effort: constraints.effort.trim() || undefined,
-          budget: constraints.budget.trim() || undefined,
-        },
+        constraints: constraintsPayload,
         llm: {
           enabled: llmEnabled,
           provider: llmProvider,
@@ -919,6 +1210,40 @@ export default function App() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleCopyProductionChatPrompt = async () => {
+    if (!productionChatPrompt) return;
+    try {
+      await navigator.clipboard.writeText(productionChatPrompt);
+      setProductionChatPromptCopied(true);
+      setTimeout(() => setProductionChatPromptCopied(false), 1500);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLoadProductionJson = () => {
+    const raw = productionImportJson.trim();
+    if (!raw) return;
+
+    try {
+      const parsed = safeParseJson(raw);
+      if (!isProductionPromptResponse(parsed)) {
+        throw new Error(t.productionImportInvalid);
+      }
+      setProductionImportError(null);
+      setCodexError(null);
+      setCodexPrompt(parsed.prompt);
+    } catch (err) {
+      const message = (err as Error).message || t.productionImportInvalid;
+      setProductionImportError(message);
+    }
+  };
+
+  const handleClearProductionJson = () => {
+    setProductionImportJson("");
+    setProductionImportError(null);
   };
 
   const handleCopy = async () => {
@@ -1408,6 +1733,63 @@ export default function App() {
                 <p>{result.prompt.intro}</p>
                 <pre>{result.prompt.technical}</pre>
               </div>
+
+              {!llmEnabled && selectedIdeaIndex !== null ? (
+                <div className="codex">
+                  <div className="codex-header">
+                    <h3>{t.productionChatTitle}</h3>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={handleCopyProductionChatPrompt}
+                      disabled={!productionChatPrompt}
+                    >
+                      {productionChatPromptCopied ? t.copied : t.copy}
+                    </button>
+                  </div>
+                  <p className="hint">{t.productionChatHint}</p>
+                  {productionChatPrompt ? (
+                    <pre>{productionChatPrompt}</pre>
+                  ) : (
+                    <p className="hint">{t.productionChatEmpty}</p>
+                  )}
+                </div>
+              ) : null}
+
+              {!llmEnabled && selectedIdeaIndex !== null ? (
+                <div className="codex">
+                  <div className="codex-header">
+                    <h3>{t.productionImportTitle}</h3>
+                    <div className="button-row">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleLoadProductionJson}
+                        disabled={!productionImportJson.trim()}
+                      >
+                        {t.productionImportLoad}
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleClearProductionJson}
+                        disabled={!productionImportJson.trim() && !productionImportError}
+                      >
+                        {t.productionImportClear}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="hint">{t.productionImportHint}</p>
+                  {productionImportError ? (
+                    <div className="error">{productionImportError}</div>
+                  ) : null}
+                  <textarea
+                    placeholder={t.productionImportPlaceholder}
+                    value={productionImportJson}
+                    onChange={(event) => setProductionImportJson(event.target.value)}
+                  />
+                </div>
+              ) : null}
 
               <div className="codex">
                 <div className="codex-header">

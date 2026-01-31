@@ -1,202 +1,239 @@
-﻿import type { Idea, IdeaConstraints, TemplateLevel } from "../domain/models.js";
+import type {
+  CodexPromptRequest,
+  ElementsConfig,
+  LocalizedText,
+  ProductionPromptTemplate,
+} from "../domain/models.js";
 
-function formatArchitectureLabel(value: string): string {
-  const normalized = value.trim().replace(/[-_]+/g, " ");
-  return normalized.replace(/\b\w/g, (match) => match.toUpperCase());
+type Language = "es" | "en";
+
+type InputsDetail = {
+  value: string;
+  label?: string;
+  hint?: string;
+  description?: string;
+};
+
+const DEFAULT_PRODUCTION_PROMPT: Record<Language, string> = {
+  es: [
+    "Eres un asistente senior. Con el INPUT JSON debajo, crea un prompt operativo para ejecutar la idea.",
+    "Si la idea implica software, incluye: arquitectura, stack, estructura de carpetas, endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
+    "Si no implica software, entrega un plan paso a paso con entregables, riesgos/mitigaciones y metricas.",
+    "INPUT JSON:",
+    "%respuesta%",
+  ].join("\n"),
+  en: [
+    "You are a senior assistant. Using the INPUT JSON below, create an execution prompt to deliver the idea.",
+    "If the idea implies software, include: architecture, stack, folder structure, endpoints, data models, validations, minimal tests, and a short README outline.",
+    "If it is non-software, provide a step-by-step plan with deliverables, risks/mitigations, and success metrics.",
+    "INPUT JSON:",
+    "%response%",
+  ].join("\n"),
+};
+
+export function buildProductionPrompt(request: CodexPromptRequest): string {
+  const language: Language = request.language === "en" ? "en" : "es";
+  const template = resolveProductionTemplate(request.elements, language);
+  const payload = buildProductionPayload(request, language);
+  return applyTemplate(template, payload);
 }
 
-export function buildCodexBase(
-  language: "es" | "en",
-  architecture?: string,
+export function buildProductionPromptMessages(
+  request: CodexPromptRequest,
+): { system: string; user: string } {
+  const language: Language = request.language === "en" ? "en" : "es";
+  const template = resolveProductionTemplate(request.elements, language);
+  const payload = buildProductionPayload(request, language);
+  const system =
+    language === "en"
+      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.";
+  const user = buildProductionUserPrompt(language, template, payload);
+  return { system, user };
+}
+
+function buildProductionUserPrompt(
+  language: Language,
+  template: string,
+  payload: string,
 ): string {
-  const archKey = architecture?.trim();
-  const architectureMode =
-    archKey === "__llm_best__" ? "llm_best" : archKey ? "manual" : "ignore";
-  const archLabel =
-    architectureMode === "manual" && archKey ? formatArchitectureLabel(archKey) : null;
-
-  if (language === "en") {
-    const architectureLines =
-      architectureMode === "manual" && archKey && archLabel
-        ? [
-            `Target architecture: ${archLabel} (key: ${archKey}).`,
-            `Follow ${archLabel} and Clean Code.`,
-          ]
-        : architectureMode === "llm_best"
-          ? [
-              "Architecture: choose the best-fit option and justify it briefly in architecture.md.",
-              "Then implement the project accordingly.",
-            ]
-          : [];
-
-    return [
-      "You are Codex, a senior coding agent.",
-      "Build the project with simplicity + Clean Code (easy-to-read code).",
-      ...architectureLines,
-      "Deliverables:",
-      "- agent.md with rules for the coding agent",
-      "- architecture.md with key decisions and system design",
-      "- todo.md with a prioritized step-by-step plan",
-      "- project structure and initial implementation",
-      "- minimal tests for core use cases",
-      "Rules:",
-      "- Keep domain logic pure and independent",
-      "- Separate application, infrastructure, and interface layers",
-      "- Validate inputs and handle errors",
-      "- Use clear naming, small functions, and avoid duplication",
-      "- Document endpoints and data models",
-    ].join("\n");
-  }
-
-  const architectureLines =
-    architectureMode === "manual" && archKey && archLabel
+  const rules =
+    language === "en"
       ? [
-          `Arquitectura objetivo: ${archLabel} (key: ${archKey}).`,
-          `Sigue ${archLabel} y Clean Code.`,
+          "TASK:",
+          "You are a prompt engineer. Produce the final production prompt for another LLM to execute the idea.",
+          "Use the TEMPLATE as the base. Replace %response% or %respuesta% with the INPUT JSON.",
+          "If the template lacks the placeholder, append the INPUT JSON at the end.",
+          "Do NOT execute the idea. Output only the prompt.",
+          "Return ONLY JSON with this schema:",
+          '{"prompt":"..."}',
         ]
-      : architectureMode === "llm_best"
-        ? [
-            "Arquitectura: elige la mejor opcion y justificala brevemente en architecture.md.",
-            "Luego implementa el proyecto en consecuencia.",
-          ]
-        : [];
+      : [
+          "TAREA:",
+          "Eres un prompt engineer. Genera el prompt de produccion final para que otro LLM ejecute la idea.",
+          "Usa el TEMPLATE como base. Sustituye %respuesta% o %response% por el INPUT JSON.",
+          "Si el template no incluye el placeholder, agrega el INPUT JSON al final.",
+          "No ejecutes la idea. Devuelve solo el prompt.",
+          "Devuelve SOLO JSON con este schema:",
+          '{"prompt":"..."}',
+        ];
 
   return [
-    "Eres Codex, un agente de desarrollo senior.",
-    "Construye el proyecto con simplicidad + Clean Code (codigo facil de leer).",
-    ...architectureLines,
-    "Entregables:",
-    "- agent.md con reglas para el agente",
-    "- architecture.md con decisiones clave y diseno del sistema",
-    "- todo.md con un plan paso a paso priorizado",
-    "- estructura del proyecto e implementacion inicial",
-    "- tests minimos para casos de uso centrales",
-    "Reglas:",
-    "- Mantener el dominio puro e independiente",
-    "- Separar capas application, infrastructure e interface",
-    "- Validar entradas y manejar errores",
-    "- Nombres claros, funciones pequenas y sin duplicacion",
-    "- Documentar endpoints y modelos de datos",
+    ...rules,
+    "",
+    "TEMPLATE:",
+    template,
+    "",
+    "INPUT JSON:",
+    payload,
   ].join("\n");
 }
 
-export function formatIdeaContext(
-  idea: Idea,
-  templateLevel: TemplateLevel,
-  language: "es" | "en",
-  extraNotes?: string,
-  constraints?: IdeaConstraints,
-  architecture?: string,
-  pattern?: string,
-  stack?: string,
+function resolveProductionTemplate(
+  elements: ElementsConfig | undefined,
+  language: Language,
 ): string {
-  const labels =
-    language === "en"
-      ? {
-          title: "Title",
-          oneLiner: "One-liner",
-          solution: "Solution",
-          differentiator: "Differentiator",
-          mvp: "MVP",
-          score: "Score",
-          inputs: "Inputs",
-          pain: "Pain/Frequency",
-          pay: "Willingness to pay",
-          alternatives: "Alternatives",
-          roi: "ROI/Impact",
-          friction: "Adoption friction",
-          acquisition: "Acquisition",
-          retention: "Retention",
-          risks: "Risks",
-          template: "Template level",
-          architecture: "Architecture",
-        }
-      : {
-          title: "Titulo",
-          oneLiner: "One-liner",
-          solution: "Solucion",
-          differentiator: "Diferenciador",
-          mvp: "MVP",
-          score: "Puntuacion",
-          inputs: "Inputs",
-          pain: "Dolor/Frecuencia",
-          pay: "Disposicion a pagar",
-          alternatives: "Alternativas",
-          roi: "ROI/Impacto",
-          friction: "Friccion de adopcion",
-          acquisition: "Adquisicion",
-          retention: "Retencion",
-          risks: "Riesgos",
-          template: "Nivel de plantilla",
-          architecture: "Arquitectura",
-        };
+  const anyElements = elements as
+    | (ElementsConfig & { production_prompt?: ProductionPromptTemplate })
+    | undefined;
+  const rawTemplate =
+    anyElements?.productionPrompt ?? anyElements?.production_prompt;
 
-  const lines = [
-    language === "en" ? "Selected idea:" : "Idea seleccionada:",
-    `- ${labels.title}: ${idea.title}`,
-    `- ${labels.oneLiner}: ${idea.oneLiner}`,
-    `- ${labels.solution}: ${idea.solution}`,
-    `- ${labels.differentiator}: ${idea.differentiator}`,
-    `- ${labels.mvp}: ${idea.mvp.join(", ")}`,
-    `- ${labels.score}: ${idea.score.value} (${idea.score.reasons.join(", ")})`,
-    `- ${labels.pain}: ${idea.painFrequency}`,
-    `- ${labels.pay}: ${idea.willingnessToPay}`,
-    `- ${labels.alternatives}: ${idea.alternatives}`,
-    `- ${labels.roi}: ${idea.roiImpact}`,
-    `- ${labels.friction}: ${idea.adoptionFriction}`,
-    `- ${labels.acquisition}: ${idea.acquisition}`,
-    `- ${labels.retention}: ${idea.retention}`,
-    `- ${labels.risks}: ${idea.risks}`,
-    `- ${labels.template}: ${templateLevel}`,
-  ];
+  const resolved = resolveTemplateValue(rawTemplate, language);
+  return resolved ?? DEFAULT_PRODUCTION_PROMPT[language];
+}
 
-  const archKey = architecture?.trim();
-  if (archKey && archKey !== "__llm_best__") {
-    const archLabel = formatArchitectureLabel(archKey);
-    lines.push(`- ${labels.architecture}: ${archLabel} (key: ${archKey})`);
+function resolveTemplateValue(
+  value: ProductionPromptTemplate | undefined,
+  language: Language,
+): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === "string") return value;
+  return getLocalizedText(value, language);
+}
+
+function getLocalizedText(
+  value: LocalizedText | undefined,
+  language: Language,
+): string | undefined {
+  if (!value) return undefined;
+  return value[language] ?? value.es ?? value.en ?? Object.values(value)[0];
+}
+
+function applyTemplate(template: string, payload: string): string {
+  const replaced = template
+    .replaceAll("%respuesta%", payload)
+    .replaceAll("%response%", payload);
+
+  if (replaced === template) {
+    return [template, "", payload].join("\n");
   }
 
-  const inputs: Record<string, string> = { ...(idea.inputs ?? {}) };
-  const patternKey = pattern?.trim();
-  if (patternKey && !inputs.pattern) {
-    inputs.pattern = patternKey;
-  }
-  const stackKey = stack?.trim();
-  if (stackKey && !inputs.stack) {
-    inputs.stack = stackKey;
-  }
+  return replaced;
+}
 
-  const inputEntries = Object.entries(inputs);
-  if (inputEntries.length > 0) {
-    lines.push(`- ${labels.inputs}:`);
-    for (const [key, value] of inputEntries) {
-      lines.push(`  - ${formatArchitectureLabel(key)}: ${value}`);
+function buildProductionPayload(
+  request: CodexPromptRequest,
+  language: Language,
+): string {
+  const idea = request.idea;
+  const inputs = { ...(idea.inputs ?? {}) };
+  const inputsDetailed = buildInputsDetailed(
+    inputs,
+    request.elements,
+    language,
+  );
+
+  const payload = {
+    language: request.language,
+    templateLevel: request.templateLevel,
+    idea: {
+      title: idea.title,
+      oneLiner: idea.oneLiner,
+      solution: idea.solution,
+      differentiator: idea.differentiator,
+      mvp: idea.mvp,
+      score: idea.score,
+      pros: idea.pros,
+      cons: idea.cons,
+      validation: {
+        painFrequency: idea.painFrequency,
+        willingnessToPay: idea.willingnessToPay,
+        alternatives: idea.alternatives,
+        roiImpact: idea.roiImpact,
+        adoptionFriction: idea.adoptionFriction,
+        acquisition: idea.acquisition,
+        retention: idea.retention,
+        risks: idea.risks,
+      },
+      inputs,
+    },
+    inputsDetailed,
+    constraints: sanitizeConstraints(request.constraints),
+    extraNotes: request.extraNotes?.trim() || undefined,
+  };
+
+  return JSON.stringify(removeEmpty(payload), null, 2);
+}
+
+function buildInputsDetailed(
+  inputs: Record<string, string>,
+  elements: ElementsConfig | undefined,
+  language: Language,
+): Record<string, InputsDetail> | undefined {
+  if (!elements) return undefined;
+
+  const categories = new Map(
+    elements.categories.map((category) => [category.key, category]),
+  );
+
+  const result: Record<string, InputsDetail> = {};
+
+  for (const [key, value] of Object.entries(inputs)) {
+    const category = categories.get(key);
+    const detail: InputsDetail = { value };
+
+    if (category) {
+      const label = getLocalizedText(category.label, language);
+      const hint = getLocalizedText(category.hint, language);
+      const option = category.options?.[value];
+      const description = getLocalizedText(option, language);
+
+      if (label) detail.label = label;
+      if (hint) detail.hint = hint;
+      if (description) detail.description = description;
     }
+
+    result[key] = detail;
   }
 
-  if (constraints) {
-    if (constraints.time?.trim()) {
-      lines.push(
-        `${language === "en" ? "Available time" : "Tiempo disponible"}: ${constraints.time.trim()}`,
-      );
-    }
-    if (constraints.effort?.trim()) {
-      lines.push(
-        `${language === "en" ? "Effort/capacity" : "Esfuerzo/capacidad"}: ${constraints.effort.trim()}`,
-      );
-    }
-    if (constraints.budget?.trim()) {
-      lines.push(
-        `${language === "en" ? "Budget" : "Presupuesto"}: ${constraints.budget.trim()}`,
-      );
-    }
-  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
-  if (extraNotes?.trim()) {
-    lines.push(
-      `${language === "en" ? "Extra notes" : "Notas extra"}: ${extraNotes.trim()}`,
-    );
-  }
+function sanitizeConstraints(
+  constraints: CodexPromptRequest["constraints"] | undefined,
+): CodexPromptRequest["constraints"] | undefined {
+  if (!constraints) return undefined;
 
-  return lines.join("\n");
+  const trimmed = {
+    time: constraints.time?.trim() || undefined,
+    effort: constraints.effort?.trim() || undefined,
+    budget: constraints.budget?.trim() || undefined,
+  };
+
+  return removeEmpty(trimmed);
+}
+
+function removeEmpty<T extends Record<string, unknown>>(value: T): T {
+  const entries = Object.entries(value).filter(([, entry]) => {
+    if (entry === undefined || entry === null) return false;
+    if (typeof entry === "string" && entry.trim() === "") return false;
+    if (typeof entry === "object") {
+      if (Array.isArray(entry)) return entry.length > 0;
+      return Object.keys(entry as Record<string, unknown>).length > 0;
+    }
+    return true;
+  });
+
+  return Object.fromEntries(entries) as T;
 }

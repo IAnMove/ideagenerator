@@ -23,6 +23,9 @@ const ElementCategorySchema = Type.Object({
 const ElementsSchema = Type.Object({
   version: Type.Literal(1),
   categories: Type.Array(ElementCategorySchema),
+  productionPrompt: Type.Optional(
+    Type.Union([Type.String(), LocalizedTextSchema]),
+  ),
 });
 
 export const LlmConfigSchema = Type.Object({
@@ -82,6 +85,7 @@ export const CodexPromptRequestSchema = Type.Object({
   pattern: Type.Optional(Type.String({ minLength: 1 })),
   stack: Type.Optional(Type.String({ minLength: 1 })),
   idea: IdeaSchema,
+  elements: Type.Optional(ElementsSchema),
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),
   llm: Type.Optional(LlmConfigSchema),

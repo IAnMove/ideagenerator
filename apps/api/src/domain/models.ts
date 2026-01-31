@@ -6,6 +6,8 @@ export type ListName = string;
 
 export type LocalizedText = Record<string, string>;
 
+export type ProductionPromptTemplate = string | LocalizedText;
+
 export interface ElementCategory {
   key: string;
   label?: LocalizedText;
@@ -16,6 +18,7 @@ export interface ElementCategory {
 export interface ElementsConfig {
   version: 1;
   categories: ElementCategory[];
+  productionPrompt?: ProductionPromptTemplate;
 }
 
 export type SelectionMode = "manual" | "decide" | "ignore";
@@ -96,6 +99,7 @@ export interface CodexPromptRequest {
   pattern?: string;
   stack?: string;
   idea: Idea;
+  elements?: ElementsConfig;
   extraNotes?: string;
   constraints?: IdeaConstraints;
   llm?: LlmConfig;
