@@ -9,16 +9,15 @@ export class GenerateIdeasUseCase {
   ) {}
 
   async execute(request: IdeaRequest): Promise<IdeaResponse> {
-    const storeLists = await this.listsRepo.getAllLists();
-    const elementsLists: Record<string, string[]> = {};
+    const lists = request.elements
+      ? Object.fromEntries(
+          request.elements.categories.map((category) => [
+            category.key,
+            Object.keys(category.options ?? {}),
+          ]),
+        )
+      : await this.listsRepo.getAllLists();
 
-    if (request.elements) {
-      for (const category of request.elements.categories) {
-        elementsLists[category.key] = Object.keys(category.options ?? {});
-      }
-    }
-
-    const lists = { ...storeLists, ...elementsLists };
     const { resolved, llmOptions } = resolveSelections(request, lists);
     return this.generator.generate(request, resolved, llmOptions);
   }
