@@ -11,6 +11,20 @@ export const SelectionConfigSchema = Type.Object({
   value: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
+const LocalizedTextSchema = Type.Record(Type.String(), Type.String());
+
+const ElementCategorySchema = Type.Object({
+  key: Type.String({ minLength: 1 }),
+  label: Type.Optional(LocalizedTextSchema),
+  hint: Type.Optional(LocalizedTextSchema),
+  options: Type.Record(Type.String(), LocalizedTextSchema),
+});
+
+const ElementsSchema = Type.Object({
+  version: Type.Literal(1),
+  categories: Type.Array(ElementCategorySchema),
+});
+
 export const LlmConfigSchema = Type.Object({
   enabled: Type.Optional(Type.Boolean()),
   provider: Type.Optional(
@@ -55,6 +69,7 @@ export const IdeaRequestSchema = Type.Object({
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
   architecture: Type.Optional(Type.String({ minLength: 1 })),
   selections: Type.Record(Type.String(), SelectionConfigSchema),
+  elements: Type.Optional(ElementsSchema),
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),
   llm: Type.Optional(LlmConfigSchema),

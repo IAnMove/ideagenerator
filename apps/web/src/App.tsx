@@ -277,6 +277,7 @@ type ChatLlmSelection = {
 type ChatLlmInput = {
   language: LanguageCode;
   templateLevel: "basic" | "advanced";
+  elements: ElementsConfig;
   extraNotes?: string;
   constraints?: {
     time?: string;
@@ -342,6 +343,8 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
           "  - If a selection is missing: treat it as unconstrained and choose the best value.",
           "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
+          "- Elements: input.elements defines available categories and options.",
+          "  - For each selection key, if input.elements has options for that key, choose one of those option keys.",
           "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
           "- Generate exactly 3 ideas.",
           "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
@@ -358,6 +361,8 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
           "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
           "- Para cada idea, incluye un objeto inputs con los valores elegidos para las keys de selecciones.",
+          "- Elementos: input.elements define las categorias y opciones disponibles.",
+          "  - Para cada key de seleccion, si hay opciones en input.elements, elige una de esas opciones.",
           "- Si usas valores con underscores/guiones en el texto, conviertelos a espacios para legibilidad.",
           "- Genera exactamente 3 ideas.",
           "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
@@ -772,6 +777,7 @@ export default function App() {
         language,
         templateLevel,
         selections: selectionsPayload,
+        elements,
         extraNotes: trimmedExtraNotes || undefined,
         constraints: constraintsPayload,
         llm: {
@@ -806,6 +812,7 @@ export default function App() {
         const chatInput: ChatLlmInput = {
           language,
           templateLevel,
+          elements,
           extraNotes: trimmedExtraNotes || undefined,
           constraints: constraintsPayload,
           selections: selectionInput,

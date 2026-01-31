@@ -4,6 +4,20 @@ export type LlmProvider = "deepseek" | "openai";
 
 export type ListName = string;
 
+export type LocalizedText = Record<string, string>;
+
+export interface ElementCategory {
+  key: string;
+  label?: LocalizedText;
+  hint?: LocalizedText;
+  options: Record<string, LocalizedText>;
+}
+
+export interface ElementsConfig {
+  version: 1;
+  categories: ElementCategory[];
+}
+
 export type SelectionMode = "manual" | "decide" | "ignore";
 
 export interface SelectionConfig {
@@ -30,6 +44,7 @@ export interface IdeaRequest {
   templateLevel: TemplateLevel;
   architecture?: string;
   selections: Partial<Record<ListName, SelectionConfig>>;
+  elements?: ElementsConfig;
   extraNotes?: string;
   constraints?: IdeaConstraints;
   llm?: LlmConfig;

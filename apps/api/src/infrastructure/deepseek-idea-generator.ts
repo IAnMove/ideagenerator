@@ -4,6 +4,7 @@
   ListName,
   ResolvedSelections,
 } from "../domain/models.js";
+import type { ElementsConfig } from "../domain/models.js";
 import type { IdeaGenerator, LlmOptions } from "../application/ports.js";
 
 type DeepSeekConfig = {
@@ -22,6 +23,7 @@ type LlmInput = {
   language: string;
   templateLevel: string;
   architecture?: string;
+  elements?: ElementsConfig;
   extraNotes?: string;
   constraints?: {
     time?: string;
@@ -114,6 +116,7 @@ function buildLlmInput(
     language: request.language,
     templateLevel: request.templateLevel,
     architecture: request.architecture?.trim() || undefined,
+    elements: request.elements,
     extraNotes: request.extraNotes,
     constraints: request.constraints,
     selections,
@@ -164,6 +167,8 @@ function buildMessages(input: LlmInput) {
     "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
     "  - If a selection is missing: treat it as unconstrained and choose the best value.",
     "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
+    "- Elements: if input.elements is provided, use its categories/options.",
+    "  - For each selection key, if input.elements has options for that key, choose one of those option keys.",
     "- Architecture:",
     "  - If input.architecture is missing/empty: do NOT mention architecture.",
     "  - If input.architecture == \"__llm_best__\": choose the best architecture and justify briefly.",
