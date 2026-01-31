@@ -91,6 +91,7 @@ type ElementsConfig = {
 };
 
 const ELEMENTS_STORAGE_KEY = "idea-forge.elements.v1";
+const SESSION_STORAGE_KEY = "idea-forge.session.v1";
 
 type PresetConfig = {
   id?: string;
@@ -102,6 +103,25 @@ type PresetConfig = {
 };
 
 type PresetsMap = Record<string, PresetConfig>;
+
+type SessionState = {
+  language?: LanguageCode;
+  templateLevel?: "basic" | "advanced";
+  selections?: Record<ListName, SelectionConfig>;
+  extraNotes?: string;
+  constraints?: Constraints;
+  llmEnabled?: boolean;
+  llmProvider?: LlmProvider;
+  llmModel?: string;
+  llmBaseUrl?: string;
+  result?: IdeaResponse;
+  selectedIdeaIndex?: number | null;
+  chatPrompt?: string;
+  importJson?: string;
+  productionChatPrompt?: string;
+  productionImportJson?: string;
+  codexPrompt?: string;
+};
 
 type DefaultPromptOptions = {
   idea_prompt?: PromptTemplate;
@@ -980,6 +1000,7 @@ export default function App() {
     defaultElements,
   );
   const [presetLoading, setPresetLoading] = useState(true);
+  const [sessionRestored, setSessionRestored] = useState(false);
   const [templateLevel, setTemplateLevel] = useState<"basic" | "advanced">(
     "basic",
   );
@@ -1050,6 +1071,7 @@ export default function App() {
   const resultsHint = result ? t.selectIdeaHint : chatPrompt ? t.chatPromptHint : t.subtitle;
 
   const elementsStorageKey = `${ELEMENTS_STORAGE_KEY}:${presetId}`;
+  const sessionStorageKey = `${SESSION_STORAGE_KEY}:${presetId}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -1144,6 +1166,104 @@ export default function App() {
       localStorage.removeItem(elementsStorageKey);
     }
   }, [presetLoading, elementsStorageKey, presetElements]);
+
+  useEffect(() => {
+    if (presetLoading || sessionRestored) return;
+    const raw = sessionStorage.getItem(sessionStorageKey);
+    if (!raw) {
+      setSessionRestored(true);
+      return;
+    }
+    try {
+      const parsed = safeParseJson(raw) as SessionState;
+      if (parsed.language === "es" || parsed.language === "en") {
+        setLanguage(parsed.language);
+      }
+      if (parsed.templateLevel === "basic" || parsed.templateLevel === "advanced") {
+        setTemplateLevel(parsed.templateLevel);
+      }
+      if (parsed.selections) {
+        setSelections(
+          buildSelectionState(categoryKeys, parsed.selections as Record<ListName, SelectionConfig>),
+        );
+      }
+      if (parsed.extraNotes !== undefined) setExtraNotes(parsed.extraNotes);
+      if (parsed.constraints) setConstraints(parsed.constraints);
+      if (typeof parsed.llmEnabled === "boolean") setLlmEnabled(parsed.llmEnabled);
+      if (parsed.llmProvider) setLlmProvider(parsed.llmProvider);
+      if (parsed.llmModel !== undefined) setLlmModel(parsed.llmModel);
+      if (parsed.llmBaseUrl !== undefined) setLlmBaseUrl(parsed.llmBaseUrl);
+      if (parsed.chatPrompt !== undefined) setChatPrompt(parsed.chatPrompt);
+      if (parsed.importJson !== undefined) setImportJson(parsed.importJson);
+      if (parsed.productionChatPrompt !== undefined)
+        setProductionChatPrompt(parsed.productionChatPrompt);
+      if (parsed.productionImportJson !== undefined)
+        setProductionImportJson(parsed.productionImportJson);
+      if (parsed.codexPrompt !== undefined) setCodexPrompt(parsed.codexPrompt);
+      if (parsed.result && isIdeaResponse(parsed.result)) {
+        setResult(parsed.result);
+        if (
+          typeof parsed.selectedIdeaIndex === "number" &&
+          parsed.selectedIdeaIndex >= 0 &&
+          parsed.selectedIdeaIndex < parsed.result.ideas.length
+        ) {
+          setSelectedIdeaIndex(parsed.selectedIdeaIndex);
+        }
+      }
+    } catch {
+      sessionStorage.removeItem(sessionStorageKey);
+    } finally {
+      setSessionRestored(true);
+    }
+  }, [
+    presetLoading,
+    sessionRestored,
+    sessionStorageKey,
+    categoryKeys.join("|"),
+  ]);
+
+  useEffect(() => {
+    if (presetLoading || !sessionRestored) return;
+    const state: SessionState = {
+      language,
+      templateLevel,
+      selections,
+      extraNotes,
+      constraints,
+      llmEnabled,
+      llmProvider,
+      llmModel,
+      llmBaseUrl,
+      result: result ?? undefined,
+      selectedIdeaIndex,
+      chatPrompt,
+      importJson,
+      productionChatPrompt,
+      productionImportJson,
+      codexPrompt,
+    };
+    sessionStorage.setItem(sessionStorageKey, JSON.stringify(state));
+  }, [
+    presetLoading,
+    sessionRestored,
+    sessionStorageKey,
+    language,
+    templateLevel,
+    selections,
+    extraNotes,
+    constraints,
+    llmEnabled,
+    llmProvider,
+    llmModel,
+    llmBaseUrl,
+    result,
+    selectedIdeaIndex,
+    chatPrompt,
+    importJson,
+    productionChatPrompt,
+    productionImportJson,
+    codexPrompt,
+  ]);
 
   useEffect(() => {
     setSelections((prev) => buildSelectionState(categoryKeys, prev));
