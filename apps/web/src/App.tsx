@@ -92,6 +92,17 @@ type ElementsConfig = {
 
 const ELEMENTS_STORAGE_KEY = "idea-forge.elements.v1";
 
+type PresetConfig = {
+  id?: string;
+  label?: string;
+  title?: string;
+  subtitle?: string;
+  elementsUrl?: string;
+  theme?: Record<string, string>;
+};
+
+type PresetsMap = Record<string, PresetConfig>;
+
 type DefaultPromptOptions = {
   idea_prompt?: PromptTemplate;
   idea_system_prompt?: PromptTemplate;
@@ -172,6 +183,10 @@ const defaultElements: ElementsConfig = {
     },
   ],
 };
+
+function isSameElementsConfig(a: ElementsConfig, b: ElementsConfig): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 function formatKeyLabel(value: string): string {
   const normalized = value.trim().replace(/[-_]+/g, " ");
@@ -724,7 +739,8 @@ const i18n = {
         title: "3) Genera ideas",
         items: [
           "Activa LLM para generar dentro de la app.",
-          "O desactivalo y copia el prompt para tu chat.",
+          "O desactivalo para no compartir tu key (no la guardamos) y copiar/pegar en tu LLM.",
+          "Si quieres ahorrar tokens, usa el modo manual y pega solo lo necesario.",
         ],
       },
       {
@@ -853,7 +869,8 @@ const i18n = {
         title: "3) Generate ideas",
         items: [
           "Enable LLM to generate inside the app.",
-          "Or disable it and copy the prompt to your chat.",
+          "Or disable it to avoid sharing your key (we don’t store it) and copy/paste into your LLM.",
+          "If you want to save tokens, use manual mode and paste only what you need.",
         ],
       },
       {
@@ -957,6 +974,12 @@ const i18n = {
 export default function App() {
   const [language, setLanguage] = useState<LanguageCode>("es");
   const [page, setPage] = useState<"app" | "knowhow">("app");
+  const [presetId, setPresetId] = useState("app");
+  const [presetsMap, setPresetsMap] = useState<PresetsMap>({});
+  const [presetElements, setPresetElements] = useState<ElementsConfig | null>(
+    defaultElements,
+  );
+  const [presetLoading, setPresetLoading] = useState(true);
   const [templateLevel, setTemplateLevel] = useState<"basic" | "advanced">(
     "basic",
   );
@@ -1026,22 +1049,101 @@ export default function App() {
   const t = i18n[language];
   const resultsHint = result ? t.selectIdeaHint : chatPrompt ? t.chatPromptHint : t.subtitle;
 
+  const elementsStorageKey = `${ELEMENTS_STORAGE_KEY}:${presetId}`;
+
   useEffect(() => {
-    const raw = localStorage.getItem(ELEMENTS_STORAGE_KEY);
+    let cancelled = false;
+    const loadPreset = async () => {
+      try {
+        const baseUrl = import.meta.env.BASE_URL || "/";
+        const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+        const originBase = `${window.location.origin}${normalizedBase}`;
+        const response = await fetch(new URL("presets.json", originBase));
+        if (!response.ok) {
+          throw new Error("No se pudo cargar presets.json");
+        }
+        const map = (await response.json()) as PresetsMap;
+        if (!cancelled) {
+          setPresetsMap(map);
+        }
+        const segments = window.location.pathname.split("/").filter(Boolean);
+        if (segments.length === 0) {
+          window.location.replace("/app");
+          return;
+        }
+        const segment = segments[0];
+        const config = map[segment];
+        if (!config) {
+          window.location.replace("/app");
+          return;
+        }
+
+        if (cancelled) return;
+        setPresetId(segment);
+
+        if (config.elementsUrl) {
+          const elementsUrl = new URL(config.elementsUrl, originBase);
+          const elementsResponse = await fetch(elementsUrl);
+          if (!elementsResponse.ok) {
+            throw new Error("No se pudo cargar el JSON de elementos");
+          }
+          const elementsPayload = await elementsResponse.json();
+          if (!isElementsConfig(elementsPayload)) {
+            throw new Error("El JSON de elementos no es valido");
+          }
+          const normalized = normalizeElementsConfig(elementsPayload);
+          if (!cancelled) {
+            setElements(normalized);
+            setPresetElements(normalized);
+            setElementsJson(JSON.stringify(normalized, null, 2));
+          }
+        } else if (!cancelled) {
+          setElements(defaultElements);
+          setPresetElements(defaultElements);
+          setElementsJson(JSON.stringify(defaultElements, null, 2));
+        }
+      } catch (err) {
+        // keep default elements if preset loading fails
+      } finally {
+        if (!cancelled) {
+          setPresetLoading(false);
+        }
+      }
+    };
+
+    loadPreset();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (presetLoading) return;
+    const raw = localStorage.getItem(elementsStorageKey);
     if (!raw) return;
     try {
       const parsed = safeParseJson(raw);
       if (isElementsConfig(parsed)) {
         const normalized = normalizeElementsConfig(parsed);
+        if (
+          presetElements &&
+          isSameElementsConfig(normalized, defaultElements) &&
+          !isSameElementsConfig(presetElements, defaultElements)
+        ) {
+          localStorage.removeItem(elementsStorageKey);
+          setElements(presetElements);
+          setElementsJson(JSON.stringify(presetElements, null, 2));
+          return;
+        }
         setElements(normalized);
         setElementsJson(JSON.stringify(normalized, null, 2));
       } else {
-        localStorage.removeItem(ELEMENTS_STORAGE_KEY);
+        localStorage.removeItem(elementsStorageKey);
       }
     } catch {
-      localStorage.removeItem(ELEMENTS_STORAGE_KEY);
+      localStorage.removeItem(elementsStorageKey);
     }
-  }, []);
+  }, [presetLoading, elementsStorageKey, presetElements]);
 
   useEffect(() => {
     setSelections((prev) => buildSelectionState(categoryKeys, prev));
@@ -1049,8 +1151,9 @@ export default function App() {
   }, [categoryKeys.join("|")]);
 
   useEffect(() => {
-    localStorage.setItem(ELEMENTS_STORAGE_KEY, JSON.stringify(elements, null, 2));
-  }, [elements]);
+    if (presetLoading) return;
+    localStorage.setItem(elementsStorageKey, JSON.stringify(elements, null, 2));
+  }, [elements, elementsStorageKey, presetLoading]);
 
   const handleModeChange = (name: ListName, mode: SelectionMode) => {
     setSelections((prev) => ({
@@ -1118,10 +1221,11 @@ export default function App() {
   };
 
   const handleResetElements = () => {
-    setElements(defaultElements);
-    setElementsJson(JSON.stringify(defaultElements, null, 2));
+    const resetTarget = presetElements ?? defaultElements;
+    setElements(resetTarget);
+    setElementsJson(JSON.stringify(resetTarget, null, 2));
     setElementsError(null);
-    localStorage.removeItem(ELEMENTS_STORAGE_KEY);
+    localStorage.removeItem(elementsStorageKey);
   };
 
   const handleElementsFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -2050,6 +2154,21 @@ export default function App() {
         </section>
       </main>
       )}
+      {Object.keys(presetsMap).length > 0 ? (
+        <div className="preset-footer">
+          <div className="preset-tags">
+            {Object.entries(presetsMap).map(([id, preset]) => (
+              <a
+                key={id}
+                href={`/${id}`}
+                className={`preset-tag ${id === presetId ? "active" : ""}`}
+              >
+                {preset.label ?? preset.title ?? id}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

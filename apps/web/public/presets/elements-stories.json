@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "idea_system_prompt": {
+    "es": "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.",
+    "en": "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+  },
+  "idea_prompt": {
+    "es": "TAREA:\nGenera 3 ideas de HISTORIAS y un prompt de produccion para desarrollarlas.\n\nREGLAS:\n- Devuelve SOLO JSON, siguiendo el schema exactamente.\n- Usa input.language para TODO el texto.\n- Selecciones: input.selections puede omitir keys.\n  - Si hay una seleccion con mode=manual: usa selection.value tal cual.\n  - Si falta una seleccion: sin restriccion; elige el mejor valor.\n- Para cada idea, incluye un objeto inputs con los valores elegidos.\n- Interpreta los campos asi:\n  - solution = sinopsis breve.\n  - differentiator = gancho narrativo.\n  - mvp = hitos del argumento (3 momentos clave).\n  - prompt.technical = prompt para escribir la historia (estructura, tono, beats).\n- Genera exactamente 3 ideas.\n- Si usas valores con underscores/guiones en el texto, conviertelos a espacios.\n\nSCHEMA:\n%schema%\n\nINPUT:\n%input%",
+    "en": "TASK:\nGenerate 3 STORY ideas and a production prompt to develop them.\n\nRULES:\n- Output JSON only, matching the schema exactly.\n- Use input.language for all text.\n- Selections: input.selections may omit keys.\n  - If a selection is present with mode=manual: use selection.value as is.\n  - If a selection is missing: treat it as unconstrained and choose the best value.\n- For each idea, include an inputs object with chosen values.\n- Interpret fields as:\n  - solution = brief synopsis.\n  - differentiator = narrative hook.\n  - mvp = key beats (3 major moments).\n  - prompt.technical = prompt to write the story (structure, tone, beats).\n- Generate exactly 3 ideas.\n- If you use selection values with underscores/hyphens, convert to spaces.\n\nSCHEMA:\n%schema%\n\nINPUT:\n%input%"
+  },
+  "production_prompt": {
+    "es": "Eres un asistente senior. Usa el INPUT JSON para generar un prompt de produccion (outline + beats + estilo) para escribir la historia.\nINPUT JSON:\n%respuesta%",
+    "en": "You are a senior assistant. Use the INPUT JSON to generate a production prompt (outline + beats + style) to write the story.\nINPUT JSON:\n%response%"
+  },
+  "production_system_prompt": {
+    "es": "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.",
+    "en": "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+  },
+  "categories": [
+    {
+      "key": "genre",
+      "label": { "es": "Genero", "en": "Genre" },
+      "hint": { "es": "Ej: fantasia, thriller", "en": "Ex: fantasy, thriller" },
+      "options": {
+        "fantasy": { "es": "Mundos magicos y reglas propias.", "en": "Magical worlds with their own rules." },
+        "sci_fi": { "es": "Tecnologia avanzada y futuros posibles.", "en": "Advanced tech and possible futures." },
+        "thriller": { "es": "Tension constante y giros.", "en": "Constant tension and twists." },
+        "romance": { "es": "Relaciones y emociones centrales.", "en": "Relationships and emotions at the core." },
+        "mystery": { "es": "Investigacion y revelaciones.", "en": "Investigation and revelations." },
+        "historical": { "es": "Ambientacion en un periodo real.", "en": "Set in a real historical period." }
+      }
+    },
+    {
+      "key": "setting",
+      "label": { "es": "Ambientacion", "en": "Setting" },
+      "hint": { "es": "Ej: ciudad futurista, pueblo costero", "en": "Ex: futuristic city, coastal town" },
+      "options": {
+        "futuristic_city": { "es": "Megaciudad tecnologica y caotica.", "en": "Tech-heavy, chaotic megacity." },
+        "small_town": { "es": "Comunidad pequena con secretos.", "en": "Small community with secrets." },
+        "space_station": { "es": "Aislamiento en el espacio.", "en": "Isolation in space." },
+        "medieval_kingdom": { "es": "Cortes, intrigas y guerra.", "en": "Courts, intrigue, and war." },
+        "post_apocalypse": { "es": "Reconstruccion tras el colapso.", "en": "Rebuilding after collapse." }
+      }
+    },
+    {
+      "key": "protagonist",
+      "label": { "es": "Protagonista", "en": "Protagonist" },
+      "hint": { "es": "Ej: detective, aprendiz", "en": "Ex: detective, apprentice" },
+      "options": {
+        "reluctant_hero": { "es": "Heroe a su pesar, empujado al cambio.", "en": "Reluctant hero pushed into change." },
+        "outsider": { "es": "Forastero que descubre una verdad.", "en": "Outsider who uncovers a truth." },
+        "antihero": { "es": "Protagonista moralmente ambiguo.", "en": "Morally ambiguous lead." },
+        "mentor": { "es": "Guia con un pasado complejo.", "en": "Guide with a complex past." },
+        "rookie": { "es": "Principiante con mucho que aprender.", "en": "Newcomer with much to learn." }
+      }
+    },
+    {
+      "key": "conflict",
+      "label": { "es": "Conflicto", "en": "Conflict" },
+      "hint": { "es": "Ej: supervivencia, traicion", "en": "Ex: survival, betrayal" },
+      "options": {
+        "survival": { "es": "Lucha por sobrevivir en condiciones adversas.", "en": "Fight to survive in harsh conditions." },
+        "betrayal": { "es": "Traicion de alguien cercano.", "en": "Betrayal by someone close." },
+        "identity": { "es": "Crisis personal y busqueda de sentido.", "en": "Identity crisis and search for meaning." },
+        "power": { "es": "Ambicion y lucha por el poder.", "en": "Ambition and struggle for power." },
+        "love_vs_duty": { "es": "Elegir entre amor y responsabilidad.", "en": "Choosing between love and duty." }
+      }
+    },
+    {
+      "key": "tone",
+      "label": { "es": "Tono", "en": "Tone" },
+      "hint": { "es": "Ej: oscuro, esperanzador", "en": "Ex: dark, hopeful" },
+      "options": {
+        "dark": { "es": "Temas duros, atmosfera pesada.", "en": "Harsh themes, heavy atmosphere." },
+        "hopeful": { "es": "Luz al final y crecimiento.", "en": "Light at the end, growth." },
+        "bittersweet": { "es": "Mezcla de alegria y perdida.", "en": "Mix of joy and loss." },
+        "humorous": { "es": "Ligero, con humor y ritmo.", "en": "Light, humorous, and paced." }
+      }
+    },
+    {
+      "key": "pov",
+      "label": { "es": "Punto de vista", "en": "Point of view" },
+      "hint": { "es": "Ej: primera persona, tercera", "en": "Ex: first person, third" },
+      "options": {
+        "first_person": { "es": "Narracion intima y subjetiva.", "en": "Intimate, subjective narration." },
+        "third_limited": { "es": "Centrada en un personaje.", "en": "Focused on one character." },
+        "third_omniscient": { "es": "Narrador que lo sabe todo.", "en": "All-knowing narrator." }
+      }
+    },
+    {
+      "key": "length",
+      "label": { "es": "Longitud", "en": "Length" },
+      "hint": { "es": "Ej: corto, largo", "en": "Ex: short, long" },
+      "options": {
+        "short_story": { "es": "Relato breve (2k-6k palabras).", "en": "Short story (2k-6k words)." },
+        "novella": { "es": "Novela corta (15k-40k).", "en": "Novella (15k-40k)." },
+        "novel": { "es": "Novela larga (60k+).", "en": "Novel (60k+)." }
+      }
+    }
+  ]
+}

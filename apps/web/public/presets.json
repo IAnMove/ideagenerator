@@ -1,0 +1,22 @@
+{
+  "app": {
+    "id": "app",
+    "label": "Apps",
+    "title": "Idea Forge",
+    "subtitle": "Genera 3 ideas prometedoras y un prompt tecnico listo para construir."
+  },
+  "stories": {
+    "id": "stories",
+    "label": "Historias",
+    "title": "Story Forge",
+    "subtitle": "Genera ideas de historias y un prompt listo para producir.",
+    "elementsUrl": "presets/elements-stories.json"
+  },
+  "games": {
+    "id": "games",
+    "label": "Juegos",
+    "title": "Game Forge",
+    "subtitle": "Genera ideas de juegos y un prompt tecnico listo para producir.",
+    "elementsUrl": "presets/elements-games.json"
+  }
+}

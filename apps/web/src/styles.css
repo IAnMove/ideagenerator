@@ -76,6 +76,39 @@ p {
   width: 100%;
 }
 
+.preset-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.preset-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.preset-tag.active {
+  background: rgba(44, 122, 123, 0.14);
+  color: var(--accent);
+  border-color: rgba(44, 122, 123, 0.35);
+}
+
+.preset-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
