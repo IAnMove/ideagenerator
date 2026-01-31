@@ -29,6 +29,36 @@
       "en": "Serverless/event-driven: functions and events (queues/webhooks). Scales on demand and reduces servers, but needs careful design (idempotency, tracing, cold starts)."
     }
   },
+  "patterns": {
+    "ddd": {
+      "es": "Domain-Driven Design: enfoque para modelar el dominio profundo con agregados, entidades y contextos delimitados. Prioriza el lenguaje ubicuo y la colaboracion entre negocio y desarrollo.",
+      "en": "Domain-Driven Design: an approach to deeply model the domain using aggregates, entities, and bounded contexts. Prioritizes ubiquitous language and close business–dev collaboration."
+    },
+    "cqrs": {
+      "es": "CQRS (Command Query Responsibility Segregation): separacion de comandos y consultas en modelos distintos. Permite escalar lecturas/escrituras por separado y reducir complejidad en casos avanzados.",
+      "en": "CQRS (Command Query Responsibility Segregation): separates commands and queries into different models. Enables scaling reads/writes independently and reducing complexity in advanced cases."
+    },
+    "event_sourcing": {
+      "es": "Event Sourcing: el estado se reconstruye a partir de eventos historicos en vez de almacenar solo el estado final. Facilita auditoria, historial completo y reconstruccion del modelo.",
+      "en": "Event Sourcing: state is rebuilt from historical events rather than storing only final state. Enables full auditability, history, and model reconstruction."
+    },
+    "monorepo": {
+      "es": "Monorepo: un unico repositorio para multiples servicios/modulos, con tooling compartido y gobernanza central. Reduce duplicacion y facilita refactors coordinados.",
+      "en": "Monorepo: a single repository for multiple services/modules, with shared tooling and central governance. Reduces duplication and simplifies coordinated refactors."
+    },
+    "soa": {
+      "es": "SOA (Service-Oriented Architecture): arquitectura empresarial previa a microservicios basada en servicios interoperables, buses de integracion y contratos formales.",
+      "en": "SOA (Service-Oriented Architecture): enterprise architecture predating microservices, built on interoperable services, integration buses, and formal contracts."
+    },
+    "client_server_spa_api": {
+      "es": "Client-Server / SPA + API: arquitectura simple y moderna basada en frontend SPA (React/Vue/Svelte) y backend API (REST/GraphQL). Ideal para MVPs y productos web rapidos.",
+      "en": "Client-Server / SPA + API: simple modern architecture with a SPA frontend (React/Vue/Svelte) and a backend API (REST/GraphQL). Ideal for MVPs and fast web products."
+    },
+    "tdd": {
+      "es": "TDD (Test-Driven Development): ciclo de desarrollo donde las pruebas se escriben antes del codigo. Fomenta diseno claro, cobertura alta y confianza en refactors.",
+      "en": "TDD (Test-Driven Development): development cycle where tests are written before code. Encourages clear design, high coverage, and confidence during refactors."
+    }
+  },
   "sector": {
     "finanzas": {
       "es": "Fintech, banca, pagos, contabilidad, inversiones y gestion financiera.",
@@ -58,7 +88,7 @@
       "es": "Campanas, contenido, automatizacion, attribution, CRM y growth.",
       "en": "Campaigns, content, automation, attribution, CRM, and growth."
     },
-    "recursos humanos": {
+    "recursos_humanos": {
       "es": "Recruiting, onboarding, desempeno, nomina y people ops.",
       "en": "Recruiting, onboarding, performance, payroll, and people ops."
     },
@@ -74,7 +104,7 @@
       "es": "Consumo, eficiencia, monitoreo, tarifas, mantenimiento y energia sostenible.",
       "en": "Consumption, efficiency, monitoring, tariffs, maintenance, sustainable energy."
     },
-    "real estate": {
+    "real_estate": {
       "es": "Propiedades, alquileres, visitas, brokers y administracion inmobiliaria.",
       "en": "Properties, rentals, showings, brokers, and property management."
     },
@@ -112,7 +142,7 @@
     }
   },
   "audience": {
-    "nomadas digitales": {
+    "nomadas_digitales": {
       "es": "Profesionales remotos que viajan; valoran herramientas moviles y async.",
       "en": "Remote professionals who travel; need mobile-first and async workflows."
     },
@@ -128,7 +158,7 @@
       "es": "Estudiantes que organizan estudio, tareas, apuntes y colaboracion.",
       "en": "Students organizing study, tasks, notes, and collaboration."
     },
-    "equipos remotos": {
+    "equipos_remotos": {
       "es": "Equipos distribuidos que necesitan coordinacion, docs y visibilidad.",
       "en": "Distributed teams needing coordination, documentation, and visibility."
     },
@@ -140,23 +170,23 @@
       "es": "Lideres que coordinan personas, KPIs, planificacion y ejecucion.",
       "en": "Managers coordinating people, KPIs, planning, and execution."
     },
-    "equipos de ventas": {
+    "equipos_de_ventas": {
       "es": "Equipos comerciales: pipeline, seguimiento, cierres y reporting.",
       "en": "Sales teams: pipeline, follow-ups, closing, and reporting."
     },
-    "equipos de marketing": {
+    "equipos_de_marketing": {
       "es": "Marketing: campanas, contenido, analitica y automatizacion.",
       "en": "Marketing: campaigns, content, analytics, and automation."
     },
-    "recursos humanos": {
+    "recursos_humanos": {
       "es": "RRHH: contratacion, onboarding, desempeno y operaciones de personas.",
       "en": "HR: hiring, onboarding, performance, and people operations."
     },
-    "finanzas corporativas": {
+    "finanzas_corporativas": {
       "es": "Finanzas internas: presupuestos, reporting, control y compliance.",
       "en": "Corporate finance: budgeting, reporting, control, and compliance."
     },
-    "creadores de contenido": {
+    "creadores_de_contenido": {
       "es": "Creadores: ideacion, produccion, calendario, distribucion y monetizacion.",
       "en": "Creators: ideation, production, calendar, distribution, monetization."
     },
@@ -164,15 +194,15 @@
       "es": "Vendedores/tiendas: inventario, ventas, proveedores y margenes.",
       "en": "Merchants: inventory, sales, suppliers, and margins."
     },
-    "propietarios de locales": {
+    "propietarios_de_locales": {
       "es": "Dueno de negocio fisico: operacion diaria, reservas, staff y caja.",
       "en": "Brick-and-mortar owner: daily ops, bookings, staff, and cashflow."
     },
-    "trabajadores de campo": {
+    "trabajadores_de_campo": {
       "es": "Personal en terreno: checklists, reportes, geo, fotos y trazabilidad.",
       "en": "Field workers: checklists, reports, geo, photos, and traceability."
     },
-    "profesionales de salud": {
+    "profesionales_de_salud": {
       "es": "Clinicos: agenda, pacientes, seguimiento y documentacion.",
       "en": "Clinicians: scheduling, patients, follow-up, and documentation."
     },
@@ -188,91 +218,115 @@
       "es": "Hogar: organizacion, gastos, compras, rutinas y cuidado.",
       "en": "Households: planning, expenses, shopping, routines, and care."
     },
-    "viajeros frecuentes": {
+    "viajeros_frecuentes": {
       "es": "Viajan seguido: itinerarios, gastos, documentos y organizacion.",
       "en": "Frequent travelers: itineraries, expenses, documents, and organization."
     }
   },
   "problem": {
-    "gestion de ingresos": {
+    "gestion_de_ingresos": {
       "es": "Registrar, prever y optimizar ingresos/cashflow con metricas claras.",
       "en": "Track, forecast, and optimize revenue/cashflow with clear metrics."
     },
-    "organizacion de tareas": {
+    "organizacion_de_tareas": {
       "es": "Planificar, priorizar y ejecutar tareas/proyectos sin perder contexto.",
       "en": "Plan, prioritize, and execute tasks/projects without losing context."
     },
-    "captacion de clientes": {
+    "captacion_de_clientes": {
       "es": "Generar leads y convertirlos con funnels, outreach y seguimiento.",
       "en": "Generate leads and convert them with funnels, outreach, and follow-ups."
     },
-    "seguimiento de habitos": {
+    "seguimiento_de_habitos": {
       "es": "Crear habitos con recordatorios, streaks, tracking y feedback.",
       "en": "Build habits with reminders, streaks, tracking, and feedback."
     },
-    "planificacion de viajes": {
+    "planificacion_de_viajes": {
       "es": "Itinerarios, reservas, checklist, mapas y coordinacion de grupo.",
       "en": "Itineraries, bookings, checklists, maps, and group coordination."
     },
-    "control de inventario": {
+    "control_de_inventario": {
       "es": "Stock en tiempo real, reposicion, alertas y movimientos.",
       "en": "Real-time stock, replenishment, alerts, and movements."
     },
-    "automatizacion de reportes": {
+    "automatizacion_de_reportes": {
       "es": "Reducir trabajo manual generando reportes desde multiples fuentes.",
       "en": "Reduce manual work by generating reports from multiple sources."
     },
-    "cumplimiento normativo": {
+    "cumplimiento_normativo": {
       "es": "Gestionar compliance, politicas, auditorias y evidencias.",
       "en": "Manage compliance, policies, audits, and evidence."
     },
-    "retencion de clientes": {
+    "retencion_de_clientes": {
       "es": "Evitar churn mejorando onboarding, engagement y seguimiento.",
       "en": "Reduce churn via onboarding, engagement, and follow-up."
     },
-    "visibilidad de costos": {
+    "visibilidad_de_costos": {
       "es": "Entender gasto por area/proyecto y detectar fugas.",
       "en": "Understand spend by team/project and find leakage."
     },
-    "formacion interna": {
+    "formacion_interna": {
       "es": "Capacitar equipos con contenidos, seguimiento y evaluacion.",
       "en": "Train teams with content, tracking, and assessment."
     },
-    "alineacion de equipos": {
+    "alineacion_de_equipos": {
       "es": "Alinear objetivos, prioridades y comunicacion para evitar drift.",
       "en": "Align goals, priorities, and comms to avoid drift."
     },
-    "gestionar citas": {
+    "gestionar_citas": {
       "es": "Agenda, disponibilidad, recordatorios, pagos y no-shows.",
       "en": "Scheduling, availability, reminders, payments, and no-shows."
     },
-    "analisis de datos": {
+    "analisis_de_datos": {
       "es": "Transformar datos en insights accionables y dashboards.",
       "en": "Turn data into actionable insights and dashboards."
     },
-    "reduccion de tiempos": {
+    "reduccion_de_tiempos": {
       "es": "Eliminar cuellos de botella y automatizar pasos repetitivos.",
       "en": "Remove bottlenecks and automate repetitive steps."
     },
-    "soporte al cliente": {
+    "soporte_al_cliente": {
       "es": "Mejorar soporte: tickets, SLA, base de conocimiento y automatizaciones.",
       "en": "Improve support: tickets, SLAs, knowledge base, and automation."
     },
-    "seguridad de datos": {
+    "seguridad_de_datos": {
       "es": "Proteger datos: acceso, auditoria, cifrado y cumplimiento.",
       "en": "Protect data: access, audit, encryption, and compliance."
     },
-    "colaboracion remota": {
+    "colaboracion_remota": {
       "es": "Trabajo async: docs, handoffs, decisiones y contexto compartido.",
       "en": "Async work: docs, handoffs, decisions, and shared context."
     },
-    "gestion de proveedores": {
+    "gestion_de_proveedores": {
       "es": "Contratos, performance, pagos y seguimiento de proveedores.",
       "en": "Vendor contracts, performance, payments, and tracking."
     },
-    "optimizar conversion": {
+    "optimizar_conversion": {
       "es": "Mejorar conversion: A/B tests, copy, funnel y friccion.",
       "en": "Improve conversion: A/B tests, copy, funnel, and friction."
+    },
+    "gestion_de_accesos": {
+      "es": "Gestionar roles, permisos y acceso seguro a recursos internos y externos.",
+      "en": "Manage roles, permissions, and secure access to internal/external resources."
+    },
+    "aprobaciones": {
+      "es": "Flujos de aprobacion: solicitudes, revisiones, delegaciones y auditoria.",
+      "en": "Approval workflows: requests, reviews, delegations, and audit trail."
+    },
+    "conciliacion": {
+      "es": "Conciliar transacciones financieras entre sistemas, bancos y registros internos.",
+      "en": "Reconcile financial transactions across systems, banks, and internal records."
+    },
+    "calidad_de_datos": {
+      "es": "Detectar duplicados, validar datos, limpiar registros y garantizar consistencia.",
+      "en": "Detect duplicates, validate data, clean records, and ensure consistency."
+    },
+    "auditoria_y_trazabilidad": {
+      "es": "Registrar acciones, cambios y accesos para auditoria, seguridad y cumplimiento.",
+      "en": "Record actions, changes, and access logs for auditing, security, and compliance."
+    },
+    "monitorizacion_alertas": {
+      "es": "Monitorear sistemas, metricas y eventos con alertas accionables y SLA.",
+      "en": "Monitor systems, metrics, and events with actionable alerts and SLAs."
     }
   },
   "productType": {
@@ -280,11 +334,11 @@
       "es": "Software web por suscripcion, normalmente multi-tenant.",
       "en": "Subscription web software, often multi-tenant."
     },
-    "mobile app": {
+    "mobile_app": {
       "es": "App movil iOS/Android enfocada en uso frecuente.",
       "en": "iOS/Android app optimized for frequent use."
     },
-    "extension de navegador": {
+    "extension_de_navegador": {
       "es": "Extension para Chrome/Firefox que vive en el flujo de navegacion.",
       "en": "Chrome/Firefox extension embedded in the browsing workflow."
     },
@@ -316,7 +370,7 @@
       "es": "Suite para operaciones (finanzas, compras, inventario, etc.).",
       "en": "Operations suite (finance, purchasing, inventory, etc.)."
     },
-    "app de escritorio": {
+    "app_de_escritorio": {
       "es": "Aplicacion desktop (Windows/Mac/Linux) para flujos locales.",
       "en": "Desktop app (Windows/Mac/Linux) for local workflows."
     },
@@ -328,11 +382,11 @@
       "es": "Portal para usuarios/partners con accesos, recursos y acciones.",
       "en": "Portal for users/partners with access, resources, and actions."
     },
-    "plataforma de cursos": {
+    "plataforma_de_cursos": {
       "es": "LMS para crear, vender y consumir cursos con progreso.",
       "en": "LMS to create, sell, and consume courses with progress."
     },
-    "motor de recomendacion": {
+    "motor_de_recomendacion": {
       "es": "Recomendaciones personalizadas con ranking y senales.",
       "en": "Personalized recommendations using ranking and signals."
     },
@@ -378,15 +432,15 @@
       "es": "Publicidad pagada con medicion de CAC/ROAS y optimizacion.",
       "en": "Paid ads with CAC/ROAS tracking and optimization."
     },
-    "cold email": {
+    "cold_email": {
       "es": "Outbound frio con segmentacion, secuencias y personalizacion.",
       "en": "Cold outbound with targeting, sequences, and personalization."
     },
-    "content marketing": {
+    "content_marketing": {
       "es": "Contenido educativo y casos de uso para atraer demanda.",
       "en": "Educational content and use cases to attract demand."
     },
-    "product hunt": {
+    "product_hunt": {
       "es": "Lanzamiento y traccion inicial en Product Hunt.",
       "en": "Launch and early traction via Product Hunt."
     },
@@ -418,11 +472,11 @@
       "es": "Webinars y demos para educar y convertir leads.",
       "en": "Webinars and demos to educate and convert leads."
     },
-    "app stores": {
+    "app_stores": {
       "es": "Distribucion en App Store/Play Store.",
       "en": "Distribution via App Store/Play Store."
     },
-    "marketplaces b2b": {
+    "marketplaces_b2b": {
       "es": "Listings en marketplaces B2B (AWS, Salesforce, etc.).",
       "en": "Listings in B2B marketplaces (AWS, Salesforce, etc.)."
     },
@@ -430,13 +484,140 @@
       "es": "Influencers/creadores en nicho para reach y credibilidad.",
       "en": "Niche influencers/creators for reach and credibility."
     },
-    "gitHub": {
+    "github": {
       "es": "Adquisicion dev-first via OSS, repos y comunidad.",
       "en": "Dev-first growth via OSS, repos, and community."
     },
-    "alianzas locales": {
+    "alianzas_locales": {
       "es": "Partners locales (agencias/camaras) para canal regional.",
       "en": "Local alliances (agencies/chambers) for regional distribution."
     }
-  }
+  },"programming_languages": {
+  "python": {
+    "es": "Generalista, excelente para scripts, automatizacion, data, IA y backend rapido. Las IAs funcionan extremadamente bien con Python (9.5/10): ecosistema muy estandarizado, mucho ejemplo online, y convenciones claras.",
+    "en": "General-purpose, great for scripting, automation, data, AI, and fast backends. AI models perform extremely well with Python (9.5/10): highly standardized ecosystem, abundant examples, and clear conventions."
+  },
+  "javascript": {
+    "es": "Lenguaje del navegador y del ecosistema web (Node.js). Ideal para frontends, APIs y herramientas. Las IAs generan JS bastante bien (8.5/10), aunque a veces mezclan versiones de librerias o APIs de navegador/node.",
+    "en": "Browser language and core of the web ecosystem (Node.js). Ideal for frontends, APIs, and tooling. AI performance is strong (8.5/10), but sometimes mixes library versions or browser/node APIs."
+  },
+  "typescript": {
+    "es": "JS tipado: ideal para proyectos medianos-grandes, APIs seguras y frontends robustos. Las IAs generan TypeScript muy bien (9/10), pero a veces inventan tipos o firmas que no existen.",
+    "en": "Typed JS: ideal for mid-large projects, safe APIs, and robust frontends. AI models generate TS very well (9/10), but sometimes invent types or non-existent signatures."
+  },
+  "go": {
+    "es": "Excelente para servicios backend, concurrencia, herramientas CLI y sistemas escalables. Las IAs funcionan bien (8.5/10) aunque a veces confunden paquetes estandar o patrones idiomaticos.",
+    "en": "Great for backends, concurrency, CLI tools, and scalable systems. AI performance is good (8.5/10), though models sometimes confuse stdlib packages or idioms."
+  },
+  "java": {
+    "es": "Estandar empresarial para sistemas robustos (microservicios, Android, banca). Las IAs rinden muy bien (9/10), pero pueden generar clases demasiado ceremoniosas o config antigua.",
+    "en": "Enterprise standard for robust systems (microservices, Android, finance). AI performance is very strong (9/10), though sometimes overly verbose classes or outdated configs appear."
+  },
+  "c_sharp": {
+    "es": "Lenguaje versatil para backend, escritorio, juegos (Unity) y cloud. Las IAs funcionan muy bien (9/10), aunque ocasionalmente mezclan versiones de .NET o namespaces.",
+    "en": "Versatile for backend, desktop, games (Unity), and cloud. AI performance is strong (9/10), though occasionally mixes .NET versions or namespaces."
+  },
+  "php": {
+    "es": "Clasico del backend web, muy usado en WordPress, Laravel y hosting tradicional. Las IAs lo manejan bien (8/10), pero pueden mezclar estilos antiguos y modernos.",
+    "en": "Classic web backend language, widely used in WordPress, Laravel, and traditional hosting. AI performance is good (8/10), but sometimes mixes old and modern styles."
+  },
+  "ruby": {
+    "es": "Lenguaje expresivo, famoso por Rails. Ideal para startups y CRUD rapido. Las IAs rinden decentemente (7.5/10), aunque a veces inventan helpers de Rails.",
+    "en": "Expressive language, famous for Rails. Great for startups and rapid CRUD. AI performance is decent (7.5/10), though models sometimes invent Rails helpers."
+  },
+  "c_cpp": {
+    "es": "Base de sistemas, videojuegos, drivers y alto rendimiento. Las IAs generan codigo aceptable (7/10) pero hay muchos detalles peligrosos: memoria, punteros y compilacion.",
+    "en": "Foundation for systems, games, drivers, and high-performance code. AI performance is fair (7/10) but many dangerous details exist: memory, pointers, compilation."
+  },
+  "rust": {
+    "es": "Lenguaje moderno sin garbage collector, ideal para sistemas seguros, webassembly y rendimiento. Las IAs aun fallan algo (7/10): suelen confundir lifetimes o crates.",
+    "en": "Modern language without GC, ideal for safe systems, WebAssembly, and performance. AI performance is improving (7/10): common issues with lifetimes or crate usage."
+  },
+  "swift": {
+    "es": "Lenguaje principal para iOS/macOS. Moderno, seguro y rapido. Las IAs generan buen codigo (8.5/10), pero mezclan diferentes versiones de SwiftUI/UIKit.",
+    "en": "Primary language for iOS/macOS. Modern, safe and fast. AI performance is strong (8.5/10), though often mixes SwiftUI/UIKit versions."
+  },
+  "kotlin": {
+    "es": "Lenguaje oficial de Android y backend moderno. Las IAs lo manejan muy bien (9/10), aunque a veces mezclan coroutines y flows inadecuadamente.",
+    "en": "Official Android language and modern backend option. AI performance is very good (9/10), but sometimes mixes coroutines/flows poorly."
+  },
+  "bash": {
+    "es": "Shell scripting puro para automatizar, instalar, deployar y manipular archivos. Las IAs funcionan bien (8/10) pero pueden generar scripts inseguros o con quoting incorrecto.",
+    "en": "Pure shell scripting for automation, installs, deployment, and file manipulation. AI performance is good (8/10) but scripts may be insecure or misquoted."
+  },
+  "sql": {
+    "es": "Lenguaje de consultas para bases de datos relacionales. Las IAs rinden muy bien (9/10), pero a veces mezclan dialectos (Postgres/MySQL/SQLite).",
+    "en": "Query language for relational databases. AI performance is very strong (9/10), but models often mix dialects (Postgres/MySQL/SQLite)."
+  }, "react_typescript": {
+  "es": "React usando TypeScript: base dominante del frontend moderno, ideal para SPAs, componentes reutilizables y UIs complejas. Las IAs funcionan muy bien con React+TS (9/10), aunque a veces inventan tipos o props inexistentes.",
+  "en": "React with TypeScript: dominant foundation of modern frontend, ideal for SPAs, reusable components and complex UIs. AI performance is very strong (9/10), though sometimes types or props are hallucinated."
+},
+"next_js_typescript": {
+  "es": "Next.js con TypeScript: framework fullstack con SSR/SSG, rutas, API Routes y App Router. Perfecto para webs modernas. Las IAs lo manejan muy bien (9/10), pero a veces mezclan App Router y Pages Router.",
+  "en": "Next.js with TypeScript: fullstack framework with SSR/SSG, routing, API Routes and the App Router. Ideal for modern websites. AI performance is strong (9/10), though App vs Pages Router is sometimes mixed."
+},
+"vue_javascript": {
+  "es": "Vue con JavaScript: framework progresivo, facil de adoptar, ideal para dashboards y UIs reactivas. Las IAs generan buen codigo (8.5/10) aunque mezclan Composition API y Options API.",
+  "en": "Vue with JavaScript: progressive framework, easy to adopt, ideal for dashboards and reactive UIs. AI performance is good (8.5/10), but mixes Composition and Options API at times."
+},
+"svelte_javascript": {
+  "es": "Svelte con JS: framework reactivo sin virtual DOM, muy ligero y rapido. Las IAs rinden decentemente (7.5/10) aunque inventan sintaxis de bindings o stores.",
+  "en": "Svelte with JS: reactive lightweight framework without virtual DOM. AI performance is decent (7.5/10), but binding/store syntax is sometimes hallucinated."
+},
+"angular_typescript": {
+  "es": "Angular con TypeScript: framework corporativo completo con modulos, DI y arquitectura fuerte. Las IAs lo llevan bastante bien (8/10), aunque mezclan patrones entre versiones.",
+  "en": "Angular with TypeScript: enterprise-grade full framework with modules, DI, and strong architecture. AI performance is solid (8/10), but version-specific patterns sometimes mix."
+},
+
+"django_python": {
+  "es": "Django con Python: framework robusto MVC con ORM, autenticacion, admin panel y migraciones. Las IAs lo manejan excelente (9/10), aunque inventan configuraciones en settings.py ocasionalmente.",
+  "en": "Django with Python: robust MVC framework with ORM, auth, admin panel and migrations. AI performance is excellent (9/10), though sometimes invents settings.py configs."
+},
+"flask_python": {
+  "es": "Flask con Python: microframework minimalista para APIs y servicios pequenos. Las IAs lo dominen muy bien (9/10), pero pueden mezclar extensiones sin importar configuracion real.",
+  "en": "Flask with Python: minimalist microframework for APIs and small services. AI performance is very strong (9/10), though sometimes extensions are mixed without setup."
+},
+"fastapi_python": {
+  "es": "FastAPI con Python: API framework moderno, rapido y tipado (Pydantic). Las IAs funcionan excelente (9/10), aunque mezclan versiones de Pydantic.",
+  "en": "FastAPI with Python: modern fast typed API framework. AI performance is excellent (9/10) though Pydantic v1/v2 confusion is common."
+},
+
+"express_nodejs": {
+  "es": "Express con Node.js: microframework super flexible para APIs y servicios web. Las IAs rinden bien (8.5/10), aunque a veces usan middlewares obsoletos.",
+  "en": "Express with Node.js: very flexible microframework for APIs and web services. AI performance is good (8.5/10) though sometimes uses outdated middleware."
+},
+"nestjs_typescript": {
+  "es": "NestJS con TypeScript: framework modular y escalable con inspiracion Angular. Excelente para APIs grandes. Las IAs lo manejan muy bien (9/10).",
+  "en": "NestJS with TypeScript: modular scalable framework inspired by Angular. Great for large APIs. AI performance is strong (9/10)."
+},
+
+"laravel_php": {
+  "es": "Laravel con PHP: framework moderno, elegante y completo para backend. ORM, colas, migraciones, blade. Las IAs lo generan muy bien (9/10).",
+  "en": "Laravel with PHP: modern, elegant and complete backend framework. ORM, queues, migrations, blade. AI performance is strong (9/10)."
+},
+
+"spring_boot_java": {
+  "es": "Spring Boot con Java: framework empresarial para microservicios y backend solido. Las IAs lo manejan muy bien (8.5/10) aunque mezclan starters entre versiones.",
+  "en": "Spring Boot with Java: enterprise framework for microservices and robust backend. AI performance is strong (8.5/10), but version mixing can occur."
+},
+
+"rails_ruby": {
+  "es": "Ruby on Rails: framework opinionado para CRUD rapido, generadores y convenciones. IA: buen nivel (8/10), aunque puede inventar helpers.",
+  "en": "Ruby on Rails: opinionated framework for fast CRUD with generators and conventions. AI performance is good (8/10), but helpers may be invented."
+},
+
+"flutter_dart": {
+  "es": "Flutter (Dart): framework para apps moviles y multiplataforma con rendimiento nativo. IA: solido (8.5/10), pero la estructura de widgets puede ser inconsistente.",
+  "en": "Flutter (Dart): framework for mobile/multiplatform apps with native-like performance. AI performance is solid (8.5/10), but widget trees can be inconsistent."
+},
+
+"unity_csharp": {
+  "es": "Unity con C#: motor popular para juegos 2D/3D. IA: buen rendimiento (8/10) pero a menudo inventa APIs o mezcla versiones.",
+  "en": "Unity with C#: popular 2D/3D game engine. AI performance is good (8/10) though API/version hallucinations happen."
+},
+"godot_gdscript": {
+  "es": "Godot con GDScript: motor open-source para juegos con sintaxis tipo Python. IA: aceptable (8/10), aunque inventa nodos o paths de escenas.",
+  "en": "Godot with GDScript: open-source game engine with Python-like syntax. AI performance is good (8/10), but node/scene paths may be hallucinated."
+} 
+}
 }

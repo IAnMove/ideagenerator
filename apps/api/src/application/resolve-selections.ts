@@ -32,6 +32,10 @@ export function resolveSelections(
           return "web app";
         case "channel":
           return "organic";
+        case "pattern":
+          return "ddd";
+        case "stack":
+          return "typescript";
       }
     }
 
@@ -46,6 +50,10 @@ export function resolveSelections(
         return "app web";
       case "channel":
         return "organico";
+      case "pattern":
+        return "ddd";
+      case "stack":
+        return "typescript";
     }
   };
 
@@ -78,6 +86,8 @@ export function resolveSelections(
     problem: resolve("problem"),
     productType: resolve("productType"),
     channel: resolve("channel"),
+    pattern: resolve("pattern"),
+    stack: resolve("stack"),
   };
 
   return { resolved, llmOptions };

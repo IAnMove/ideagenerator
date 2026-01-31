@@ -27,6 +27,8 @@ export class OpenAiCodexPromptGenerator implements CodexPromptGenerator {
       request.extraNotes,
       request.constraints,
       request.architecture,
+      request.pattern,
+      request.stack,
     );
 
     const model = request.llm?.model || this.config.model;
@@ -91,7 +93,8 @@ function buildMessages(language: "es" | "en", context: string) {
           "Return only the addendum as JSON:",
           '{"addendum":"..."}',
           "Keep it concise, practical, and actionable.",
-          "Include: MVP scope, stack suggestion (if missing), and first milestones.",
+          "If the idea context already specifies a stack or pattern, follow it (do not propose a different one).",
+          "Include: MVP scope, stack suggestion (if missing), pattern suggestion (if missing), and first milestones.",
         ]
       : [
           "Generas un addendum para un prompt de Codex.",
@@ -99,7 +102,8 @@ function buildMessages(language: "es" | "en", context: string) {
           "Devuelve solo el addendum en JSON:",
           '{"addendum":"..."}',
           "Mantenlo conciso, practico y accionable.",
-          "Incluye: alcance MVP, stack sugerido (si falta) y primeros hitos.",
+          "Si el contexto ya especifica stack o patron, respetalo (no propongas otro distinto).",
+          "Incluye: alcance MVP, stack sugerido (si falta), patron sugerido (si falta) y primeros hitos.",
         ];
 
   const user = [

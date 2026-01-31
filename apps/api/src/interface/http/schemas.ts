@@ -63,6 +63,8 @@ export const IdeaRequestSchema = Type.Object({
       problem: SelectionConfigSchema,
       productType: SelectionConfigSchema,
       channel: SelectionConfigSchema,
+      pattern: SelectionConfigSchema,
+      stack: SelectionConfigSchema,
     }),
   ),
   extraNotes: Type.Optional(Type.String()),
@@ -74,6 +76,8 @@ export const CodexPromptRequestSchema = Type.Object({
   language: Type.String({ minLength: 2 }),
   templateLevel: Type.Union([Type.Literal("basic"), Type.Literal("advanced")]),
   architecture: Type.Optional(Type.String({ minLength: 1 })),
+  pattern: Type.Optional(Type.String({ minLength: 1 })),
+  stack: Type.Optional(Type.String({ minLength: 1 })),
   idea: IdeaSchema,
   extraNotes: Type.Optional(Type.String()),
   constraints: Type.Optional(ConstraintsSchema),
@@ -86,6 +90,8 @@ export const ListsSchema = Type.Object({
   problem: Type.Array(Type.String()),
   productType: Type.Array(Type.String()),
   channel: Type.Array(Type.String()),
+  pattern: Type.Array(Type.String()),
+  stack: Type.Array(Type.String()),
 });
 
 export const ListsUpdateSchema = Type.Object({

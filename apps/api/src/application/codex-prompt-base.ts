@@ -87,6 +87,8 @@ export function formatIdeaContext(
   extraNotes?: string,
   constraints?: IdeaConstraints,
   architecture?: string,
+  pattern?: string,
+  stack?: string,
 ): string {
   const labels =
     language === "en"
@@ -110,6 +112,8 @@ export function formatIdeaContext(
           risks: "Risks",
           template: "Template level",
           architecture: "Architecture",
+          pattern: "Pattern",
+          stack: "Stack",
         }
       : {
           title: "Titulo",
@@ -131,6 +135,8 @@ export function formatIdeaContext(
           risks: "Riesgos",
           template: "Nivel de plantilla",
           architecture: "Arquitectura",
+          pattern: "Patron",
+          stack: "Stack",
         };
 
   const lines = [
@@ -159,6 +165,18 @@ export function formatIdeaContext(
   if (archKey && archKey !== "__llm_best__") {
     const archLabel = formatArchitectureLabel(archKey);
     lines.push(`- ${labels.architecture}: ${archLabel} (key: ${archKey})`);
+  }
+
+  const patternKey = pattern?.trim();
+  if (patternKey) {
+    const patternLabel = formatArchitectureLabel(patternKey);
+    lines.push(`- ${labels.pattern}: ${patternLabel} (key: ${patternKey})`);
+  }
+
+  const stackKey = stack?.trim();
+  if (stackKey) {
+    const stackLabel = formatArchitectureLabel(stackKey);
+    lines.push(`- ${labels.stack}: ${stackLabel} (key: ${stackKey})`);
   }
 
   if (constraints) {

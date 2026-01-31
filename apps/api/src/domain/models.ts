@@ -7,7 +7,9 @@ export type ListName =
   | "audience"
   | "problem"
   | "productType"
-  | "channel";
+  | "channel"
+  | "pattern"
+  | "stack";
 
 export type SelectionMode = "manual" | "decide" | "ignore";
 
@@ -85,12 +87,16 @@ export interface ResolvedSelections {
   problem: string;
   productType: string;
   channel: string;
+  pattern: string;
+  stack: string;
 }
 
 export interface CodexPromptRequest {
   language: LanguageCode;
   templateLevel: TemplateLevel;
   architecture?: string;
+  pattern?: string;
+  stack?: string;
   idea: Idea;
   extraNotes?: string;
   constraints?: IdeaConstraints;

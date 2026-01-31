@@ -37,6 +37,8 @@ const listNames: ListName[] = [
   "problem",
   "productType",
   "channel",
+  "pattern",
+  "stack",
 ];
 
 export class OpenAiIdeaGenerator implements IdeaGenerator {
@@ -172,6 +174,9 @@ function buildMessages(input: LlmInput) {
     "  - If a selection is present with mode=manual: use selection.value as is.",
     "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
     "  - If a selection is missing: treat it as unconstrained and choose the best value.",
+    "- Special selections:",
+    "  - pattern: main architecture pattern (e.g., ddd, cqrs). If present, reflect it in prompt.technical.",
+    "  - stack: target tech stack / language+framework (e.g., react_typescript, django_python). If present, prompt.technical MUST specify it explicitly.",
     "- Architecture:",
     "  - If input.architecture is missing/empty: do NOT mention architecture.",
     "  - If input.architecture == \"__llm_best__\": choose the best architecture and justify briefly.",
@@ -179,7 +184,8 @@ function buildMessages(input: LlmInput) {
     "  - Otherwise: follow input.architecture (treat it as a key/name) and align the prompt.technical accordingly.",
     "- Generate exactly 3 ideas.",
     "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-    "- The prompt.technical must include: Clean Code guidance, practical folder structure, endpoints, data models, validations, minimal tests, and a short README outline.",
+    "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
+    "- The prompt.technical must include: recommended stack (language/framework), Clean Code guidance, practical folder structure, endpoints, data models, validations, minimal tests, and a short README outline.",
     "",
     "SCHEMA:",
     schema,

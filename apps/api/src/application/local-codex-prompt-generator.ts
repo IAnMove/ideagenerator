@@ -13,12 +13,14 @@ export class LocalCodexPromptGenerator implements CodexPromptGenerator {
       request.extraNotes,
       request.constraints,
       request.architecture,
+      request.pattern,
+      request.stack,
     );
 
     const followUp =
       language === "en"
-        ? "Add a practical MVP scope, suggested stack, and first milestones."
-        : "Agrega un alcance MVP practico, stack sugerido y primeros hitos.";
+        ? "Add a practical MVP scope, confirm/choose stack and pattern, and list first milestones."
+        : "Agrega un alcance MVP practico, confirma/elige stack y patron, y lista los primeros hitos.";
 
     const prompt = [base, "", context, "", followUp].join("\n\n");
 

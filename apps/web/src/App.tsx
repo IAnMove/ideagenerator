@@ -4,7 +4,14 @@ import defaultOptions from "./data/default-options.json";
 
 type SelectionMode = "manual" | "decide" | "ignore";
 
-type ListName = "sector" | "audience" | "problem" | "productType" | "channel";
+type ListName =
+  | "sector"
+  | "audience"
+  | "problem"
+  | "productType"
+  | "channel"
+  | "pattern"
+  | "stack";
 
 type SelectionConfig = {
   mode: SelectionMode;
@@ -73,6 +80,8 @@ const listOptionDescriptionsByList: Record<ListName, LocalizedDescriptions> = {
   problem: defaultOptions.problem as LocalizedDescriptions,
   productType: defaultOptions.productType as LocalizedDescriptions,
   channel: defaultOptions.channel as LocalizedDescriptions,
+  pattern: defaultOptions.patterns as LocalizedDescriptions,
+  stack: defaultOptions.programming_languages as LocalizedDescriptions,
 };
 
 function formatKeyLabel(value: string): string {
@@ -255,10 +264,14 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - If a selection is present with mode=manual: use selection.value as is.",
           "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
           "  - If a selection is missing: treat it as unconstrained and choose the best value.",
+          "- Special selections:",
+          "  - pattern: main architecture pattern (e.g., ddd, cqrs). If present, reflect it in prompt.technical.",
+          "  - stack: target tech stack / language+framework (e.g., react_typescript, django_python). If present, prompt.technical MUST specify it explicitly.",
+          "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
           ...architectureRulesEn,
           "- Generate exactly 3 ideas.",
           "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-          "- The prompt.technical must include: Clean Code guidance, a practical structure (folders), endpoints, data models, validations, minimal tests, and a short README outline.",
+          "- The prompt.technical must include: recommended stack (language/framework), Clean Code guidance, a practical structure (folders), endpoints, data models, validations, minimal tests, and a short README outline.",
         ]
       : [
           "REGLAS:",
@@ -270,10 +283,14 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - Si hay una seleccion con mode=manual: usa selection.value tal cual.",
           "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
           "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
+          "- Selecciones especiales:",
+          "  - pattern: patron de arquitectura principal (ej: ddd, cqrs). Si esta, reflejalo en prompt.technical.",
+          "  - stack: stack objetivo / lenguaje+framework (ej: react_typescript, django_python). Si esta, prompt.technical DEBE especificarlo explicitamente.",
+          "- Si usas valores con underscores/guiones en el texto, conviertelos a espacios para legibilidad.",
           ...architectureRulesEs,
           "- Genera exactamente 3 ideas.",
           "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-          "- El prompt.technical debe incluir: guia de Clean Code, una estructura practica (carpetas), endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
+          "- El prompt.technical debe incluir: stack recomendado (lenguaje/framework), guia de Clean Code, una estructura practica (carpetas), endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
         ];
 
   return [
@@ -297,6 +314,8 @@ const listOrder: ListName[] = [
   "problem",
   "productType",
   "channel",
+  "pattern",
+  "stack",
 ];
 
 const i18n = {
@@ -377,6 +396,8 @@ const i18n = {
       problem: "Problema",
       productType: "Tipo de producto",
       channel: "Canal",
+      pattern: "Patron",
+      stack: "Stack",
     },
     listHints: {
       sector: "Ej: finanzas, salud, educacion",
@@ -384,6 +405,8 @@ const i18n = {
       problem: "Ej: gestion de ingresos",
       productType: "Ej: saas, mobile app",
       channel: "Ej: seo, comunidades",
+      pattern: "Ej: ddd, cqrs",
+      stack: "Ej: react_typescript, django_python",
     },
   },
   en: {
@@ -463,6 +486,8 @@ const i18n = {
       problem: "Problem",
       productType: "Product type",
       channel: "Channel",
+      pattern: "Pattern",
+      stack: "Stack",
     },
     listHints: {
       sector: "Ex: finance, health, education",
@@ -470,6 +495,8 @@ const i18n = {
       problem: "Ex: income tracking",
       productType: "Ex: SaaS, mobile app",
       channel: "Ex: SEO, communities",
+      pattern: "Ex: ddd, cqrs",
+      stack: "Ex: react_typescript, django_python",
     },
   },
 } as const;
@@ -480,6 +507,8 @@ const initialSelections: Record<ListName, SelectionConfig> = {
   problem: { mode: "decide", value: "" },
   productType: { mode: "decide", value: "" },
   channel: { mode: "decide", value: "" },
+  pattern: { mode: "decide", value: "" },
+  stack: { mode: "decide", value: "" },
 };
 
 const defaultLists: Lists = {
@@ -488,6 +517,8 @@ const defaultLists: Lists = {
   problem: Object.keys(listOptionDescriptionsByList.problem),
   productType: Object.keys(listOptionDescriptionsByList.productType),
   channel: Object.keys(listOptionDescriptionsByList.channel),
+  pattern: Object.keys(listOptionDescriptionsByList.pattern),
+  stack: Object.keys(listOptionDescriptionsByList.stack),
 };
 
 function mergeLists(base: Lists, incoming: Lists): Lists {
@@ -525,6 +556,8 @@ export default function App() {
     problem: "",
     productType: "",
     channel: "",
+    pattern: "",
+    stack: "",
   });
   const [extraNotes, setExtraNotes] = useState("");
   const [constraints, setConstraints] = useState<Constraints>({
@@ -805,6 +838,14 @@ export default function App() {
         language,
         templateLevel,
         architecture: trimmedArchitecture || undefined,
+        pattern:
+          selections.pattern.mode === "manual"
+            ? selections.pattern.value.trim() || undefined
+            : undefined,
+        stack:
+          selections.stack.mode === "manual"
+            ? selections.stack.value.trim() || undefined
+            : undefined,
         idea,
         extraNotes: extraNotes.trim() || undefined,
         constraints: {
@@ -972,7 +1013,7 @@ export default function App() {
                       <option value="">--</option>
                       {lists[name]?.map((item) => (
                         <option key={item} value={item}>
-                          {item}
+                          {formatKeyLabel(item)}
                         </option>
                       ))}
                     </select>
