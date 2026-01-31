@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
+import type { ChangeEvent } from "react";
 import defaultOptions from "./data/default-options.json";
 
 type SelectionMode = "manual" | "decide" | "ignore";
@@ -56,23 +57,79 @@ type Constraints = {
   budget: string;
 };
 
-type LocalizedDescriptions = Record<string, Record<LanguageCode, string>>;
+type LocalizedText = Record<string, string>;
 
-const architectureDescriptions =
-  defaultOptions.architectures as LocalizedDescriptions;
+type LocalizedDescriptions = Record<string, LocalizedText>;
 
-const architectureKeys = Object.keys(architectureDescriptions).sort();
+type ElementCategory = {
+  key: string;
+  label?: LocalizedText;
+  hint?: LocalizedText;
+  options: LocalizedDescriptions;
+};
 
-const ARCHITECTURE_LLM_BEST = "__llm_best__";
+type ElementsConfig = {
+  version: 1;
+  categories: ElementCategory[];
+};
 
-const listOptionDescriptionsByList: Record<ListName, LocalizedDescriptions> = {
-  sector: defaultOptions.sector as LocalizedDescriptions,
-  audience: defaultOptions.audience as LocalizedDescriptions,
-  problem: defaultOptions.problem as LocalizedDescriptions,
-  productType: defaultOptions.productType as LocalizedDescriptions,
-  channel: defaultOptions.channel as LocalizedDescriptions,
-  pattern: defaultOptions.patterns as LocalizedDescriptions,
-  stack: defaultOptions.programming_languages as LocalizedDescriptions,
+const ELEMENTS_STORAGE_KEY = "idea-forge.elements.v1";
+
+const defaultElements: ElementsConfig = {
+  version: 1,
+  categories: [
+    {
+      key: "sector",
+      label: { es: "Sector", en: "Sector" },
+      hint: { es: "Ej: finanzas, salud, educacion", en: "Ex: finance, health, education" },
+      options: defaultOptions.sector as LocalizedDescriptions,
+    },
+    {
+      key: "audience",
+      label: { es: "Publico", en: "Audience" },
+      hint: { es: "Ej: nomadas digitales, pymes", en: "Ex: digital nomads, SMBs" },
+      options: defaultOptions.audience as LocalizedDescriptions,
+    },
+    {
+      key: "problem",
+      label: { es: "Problema", en: "Problem" },
+      hint: { es: "Ej: gestion de ingresos", en: "Ex: income tracking" },
+      options: defaultOptions.problem as LocalizedDescriptions,
+    },
+    {
+      key: "productType",
+      label: { es: "Tipo de producto", en: "Product type" },
+      hint: { es: "Ej: saas, mobile app", en: "Ex: SaaS, mobile app" },
+      options: defaultOptions.productType as LocalizedDescriptions,
+    },
+    {
+      key: "channel",
+      label: { es: "Canal", en: "Channel" },
+      hint: { es: "Ej: seo, comunidades", en: "Ex: SEO, communities" },
+      options: defaultOptions.channel as LocalizedDescriptions,
+    },
+    {
+      key: "architecture",
+      label: { es: "Arquitectura", en: "Architecture" },
+      hint: {
+        es: "Ej: clean_architecture, hexagonal_ports_and_adapters",
+        en: "Ex: clean_architecture, hexagonal_ports_and_adapters",
+      },
+      options: defaultOptions.architectures as LocalizedDescriptions,
+    },
+    {
+      key: "pattern",
+      label: { es: "Patron", en: "Pattern" },
+      hint: { es: "Ej: ddd, cqrs", en: "Ex: ddd, cqrs" },
+      options: defaultOptions.patterns as LocalizedDescriptions,
+    },
+    {
+      key: "stack",
+      label: { es: "Stack", en: "Stack" },
+      hint: { es: "Ej: react_typescript, django_python", en: "Ex: react_typescript, django_python" },
+      options: defaultOptions.programming_languages as LocalizedDescriptions,
+    },
+  ],
 };
 
 function formatKeyLabel(value: string): string {
@@ -106,6 +163,66 @@ function isStringArray(value: unknown): value is string[] {
 function isStringRecord(value: unknown): value is Record<string, string> {
   if (!isRecord(value)) return false;
   return Object.values(value).every((item) => typeof item === "string");
+}
+
+function isLocalizedDescriptions(value: unknown): value is LocalizedDescriptions {
+  if (!isRecord(value)) return false;
+  return Object.values(value).every(isStringRecord);
+}
+
+function getLocalizedText(
+  value: LocalizedText | undefined,
+  language: LanguageCode,
+): string | undefined {
+  if (!value) return undefined;
+  return value[language] ?? value.es ?? value.en ?? Object.values(value)[0];
+}
+
+function formatOptionLabel(value: string): string {
+  return /[-_]/.test(value) ? formatKeyLabel(value) : value;
+}
+
+function isElementsConfig(value: unknown): value is ElementsConfig {
+  if (!isRecord(value)) return false;
+  if (value.version !== 1) return false;
+  if (!Array.isArray(value.categories)) return false;
+
+  const keys = new Set<string>();
+
+  for (const category of value.categories) {
+    if (!isRecord(category)) return false;
+    if (typeof category.key !== "string" || !category.key.trim()) return false;
+    if (keys.has(category.key)) return false;
+    keys.add(category.key);
+    if (category.label !== undefined && !isStringRecord(category.label)) return false;
+    if (category.hint !== undefined && !isStringRecord(category.hint)) return false;
+    if (!isLocalizedDescriptions(category.options)) return false;
+  }
+
+  return true;
+}
+
+function buildSelectionState(
+  keys: string[],
+  existing?: Record<string, SelectionConfig>,
+): Record<string, SelectionConfig> {
+  const next: Record<string, SelectionConfig> = {};
+  for (const key of keys) {
+    const current = existing?.[key];
+    next[key] = current ?? { mode: "decide", value: "" };
+  }
+  return next;
+}
+
+function buildTextState(
+  keys: string[],
+  existing?: Record<string, string>,
+): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const key of keys) {
+    next[key] = existing?.[key] ?? "";
+  }
+  return next;
 }
 
 function isIdeaScore(value: unknown): value is IdeaScore {
@@ -157,14 +274,9 @@ type ChatLlmSelection = {
   value?: string;
 };
 
-type ChatArchitecture =
-  | { mode: "manual"; key: string; description?: string }
-  | { mode: "llm_best" };
-
 type ChatLlmInput = {
   language: LanguageCode;
   templateLevel: "basic" | "advanced";
-  architecture?: ChatArchitecture;
   extraNotes?: string;
   constraints?: {
     time?: string;
@@ -217,33 +329,6 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "Genera 3 ideas de apps Y un prompt tecnico listo para pegar en un agente de codigo (Codex).",
         ];
 
-  const architectureRulesEn: string[] = [];
-  const architectureRulesEs: string[] = [];
-
-  if (input.architecture?.mode === "manual") {
-    architectureRulesEn.push(
-      "- Architecture: follow input.architecture.key exactly (do not change it).",
-    );
-    architectureRulesEs.push(
-      "- Arquitectura: respeta input.architecture.key exactamente (no la cambies).",
-    );
-  }
-
-  if (input.architecture?.mode === "llm_best") {
-    architectureRulesEn.push(
-      "- Architecture: choose the best architecture and justify the choice briefly.",
-    );
-    architectureRulesEn.push(
-      "- Put the chosen architecture + rationale at the top of prompt.technical (1-3 lines).",
-    );
-    architectureRulesEs.push(
-      "- Arquitectura: elige la mejor y justifica brevemente la eleccion.",
-    );
-    architectureRulesEs.push(
-      "- Pon la arquitectura elegida + razon al inicio de prompt.technical (1-3 lineas).",
-    );
-  }
-
   const rules =
     language === "en"
       ? [
@@ -257,11 +342,7 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
           "  - If a selection is missing: treat it as unconstrained and choose the best value.",
           "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
-          "- Special selections:",
-          "  - pattern: main architecture pattern (e.g., ddd, cqrs). If present, reflect it in prompt.technical.",
-          "  - stack: target tech stack / language+framework (e.g., react_typescript, django_python). If present, prompt.technical MUST specify it explicitly.",
           "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
-          ...architectureRulesEn,
           "- Generate exactly 3 ideas.",
           "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
           "- The prompt.technical must include: recommended stack (language/framework), Clean Code guidance, a practical structure (folders), endpoints, data models, validations, minimal tests, and a short README outline.",
@@ -277,11 +358,7 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
           "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
           "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
           "- Para cada idea, incluye un objeto inputs con los valores elegidos para las keys de selecciones.",
-          "- Selecciones especiales:",
-          "  - pattern: patron de arquitectura principal (ej: ddd, cqrs). Si esta, reflejalo en prompt.technical.",
-          "  - stack: stack objetivo / lenguaje+framework (ej: react_typescript, django_python). Si esta, prompt.technical DEBE especificarlo explicitamente.",
           "- Si usas valores con underscores/guiones en el texto, conviertelos a espacios para legibilidad.",
-          ...architectureRulesEs,
           "- Genera exactamente 3 ideas.",
           "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
           "- El prompt.technical debe incluir: stack recomendado (lenguaje/framework), guia de Clean Code, una estructura practica (carpetas), endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
@@ -302,16 +379,6 @@ function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
   ].join("\n");
 }
 
-const listOrder: ListName[] = [
-  "sector",
-  "audience",
-  "problem",
-  "productType",
-  "channel",
-  "pattern",
-  "stack",
-];
-
 const i18n = {
   es: {
     appName: "Idea Forge",
@@ -327,7 +394,6 @@ const i18n = {
     decide: "Decide tu",
     none: "Sin definir",
     addItem: "Agregar",
-    saveLists: "Guardar listas",
     extraNotes: "Notas extra (opcional)",
     constraints: "Restricciones (opcional)",
     time: "Tiempo disponible",
@@ -370,11 +436,16 @@ const i18n = {
       "JSON invalido o no sigue el schema. Asegurate de pegar SOLO el JSON del output.",
     copy: "Copiar",
     copied: "Copiado",
-    architecture: "Arquitectura (opcional)",
-    architectureHint:
-      "Manual: fuerzas una. Sin definir: se omite. LLM decide: elige y justifica.",
-    architectureAuto: "LLM decide",
-    architectureAutoHint: "El LLM eligira y justificara la mejor arquitectura.",
+    elementsTitle: "JSON de elementos",
+    elementsHint:
+      "Carga un JSON de elementos con categorias y opciones. Se guarda en tu navegador.",
+    elementsPlaceholder: "Pega aqui el JSON de elementos...",
+    elementsImport: "Cargar JSON",
+    elementsExport: "Exportar JSON",
+    elementsReset: "Restaurar default",
+    elementsFile: "Importar archivo JSON",
+    elementsInvalid:
+      "JSON invalido o no cumple con el schema de elementos.",
     validation: "Validacion",
     painFrequency: "Dolor y frecuencia",
     willingnessToPay: "Disposicion a pagar",
@@ -384,24 +455,6 @@ const i18n = {
     acquisition: "Adquisicion",
     retention: "Retencion",
     risks: "Riesgos",
-    listLabels: {
-      sector: "Sector",
-      audience: "Publico",
-      problem: "Problema",
-      productType: "Tipo de producto",
-      channel: "Canal",
-      pattern: "Patron",
-      stack: "Stack",
-    },
-    listHints: {
-      sector: "Ej: finanzas, salud, educacion",
-      audience: "Ej: nomadas digitales, pymes",
-      problem: "Ej: gestion de ingresos",
-      productType: "Ej: saas, mobile app",
-      channel: "Ej: seo, comunidades",
-      pattern: "Ej: ddd, cqrs",
-      stack: "Ej: react_typescript, django_python",
-    },
   },
   en: {
     appName: "Idea Forge",
@@ -417,7 +470,6 @@ const i18n = {
     decide: "Decide",
     none: "Undefined",
     addItem: "Add",
-    saveLists: "Save lists",
     extraNotes: "Extra notes (optional)",
     constraints: "Constraints (optional)",
     time: "Available time",
@@ -460,11 +512,16 @@ const i18n = {
       "Invalid JSON or schema mismatch. Make sure you paste ONLY the JSON output.",
     copy: "Copy",
     copied: "Copied",
-    architecture: "Architecture (optional)",
-    architectureHint:
-      "Manual: you force one. Undefined: omit it. LLM decides: picks and justifies the best one.",
-    architectureAuto: "LLM decides",
-    architectureAutoHint: "The LLM will pick and justify the best architecture.",
+    elementsTitle: "Elements JSON",
+    elementsHint:
+      "Load an elements JSON with categories and options. Stored in your browser.",
+    elementsPlaceholder: "Paste the elements JSON here...",
+    elementsImport: "Load JSON",
+    elementsExport: "Export JSON",
+    elementsReset: "Reset to default",
+    elementsFile: "Import JSON file",
+    elementsInvalid:
+      "Invalid JSON or it doesn't match the elements schema.",
     validation: "Validation",
     painFrequency: "Pain & frequency",
     willingnessToPay: "Willingness to pay",
@@ -474,85 +531,42 @@ const i18n = {
     acquisition: "Acquisition",
     retention: "Retention",
     risks: "Risks",
-    listLabels: {
-      sector: "Sector",
-      audience: "Audience",
-      problem: "Problem",
-      productType: "Product type",
-      channel: "Channel",
-      pattern: "Pattern",
-      stack: "Stack",
-    },
-    listHints: {
-      sector: "Ex: finance, health, education",
-      audience: "Ex: digital nomads, SMBs",
-      problem: "Ex: income tracking",
-      productType: "Ex: SaaS, mobile app",
-      channel: "Ex: SEO, communities",
-      pattern: "Ex: ddd, cqrs",
-      stack: "Ex: react_typescript, django_python",
-    },
   },
 } as const;
-
-const initialSelections: Record<ListName, SelectionConfig> = {
-  sector: { mode: "decide", value: "" },
-  audience: { mode: "decide", value: "" },
-  problem: { mode: "decide", value: "" },
-  productType: { mode: "decide", value: "" },
-  channel: { mode: "decide", value: "" },
-  pattern: { mode: "decide", value: "" },
-  stack: { mode: "decide", value: "" },
-};
-
-const defaultLists: Lists = {
-  sector: Object.keys(listOptionDescriptionsByList.sector),
-  audience: Object.keys(listOptionDescriptionsByList.audience),
-  problem: Object.keys(listOptionDescriptionsByList.problem),
-  productType: Object.keys(listOptionDescriptionsByList.productType),
-  channel: Object.keys(listOptionDescriptionsByList.channel),
-  pattern: Object.keys(listOptionDescriptionsByList.pattern),
-  stack: Object.keys(listOptionDescriptionsByList.stack),
-};
-
-function mergeLists(base: Lists, incoming: Lists): Lists {
-  const merged: Lists = { ...base };
-
-  for (const name of listOrder) {
-    const combined = [...(base[name] ?? []), ...(incoming[name] ?? [])];
-    const seen = new Set<string>();
-
-    merged[name] = combined
-      .map((item) => item.trim())
-      .filter((item) => {
-        if (!item) return false;
-        const key = item.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-  }
-
-  return merged;
-}
 
 export default function App() {
   const [language, setLanguage] = useState<LanguageCode>("es");
   const [templateLevel, setTemplateLevel] = useState<"basic" | "advanced">(
     "basic",
   );
-  const [architecture, setArchitecture] = useState("");
-  const [lists, setLists] = useState<Lists>(defaultLists);
-  const [selections, setSelections] = useState(initialSelections);
-  const [newItems, setNewItems] = useState<Record<ListName, string>>({
-    sector: "",
-    audience: "",
-    problem: "",
-    productType: "",
-    channel: "",
-    pattern: "",
-    stack: "",
-  });
+  const [elements, setElements] = useState<ElementsConfig>(() => defaultElements);
+  const [elementsJson, setElementsJson] = useState("");
+  const [elementsError, setElementsError] = useState<string | null>(null);
+  const categoryKeys = useMemo(
+    () => elements.categories.map((category) => category.key),
+    [elements],
+  );
+  const listOrder = categoryKeys;
+  const categoriesByKey = useMemo(() => {
+    const map: Record<string, ElementCategory> = {};
+    for (const category of elements.categories) {
+      map[category.key] = category;
+    }
+    return map;
+  }, [elements]);
+  const lists = useMemo(() => {
+    const map: Lists = {};
+    for (const category of elements.categories) {
+      map[category.key] = Object.keys(category.options ?? {});
+    }
+    return map;
+  }, [elements]);
+  const [selections, setSelections] = useState<
+    Record<ListName, SelectionConfig>
+  >(() => buildSelectionState(categoryKeys));
+  const [newItems, setNewItems] = useState<Record<ListName, string>>(() =>
+    buildTextState(categoryKeys),
+  );
   const [extraNotes, setExtraNotes] = useState("");
   const [constraints, setConstraints] = useState<Constraints>({
     time: "",
@@ -578,35 +592,32 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const t = i18n[language];
-  const listLabels = t.listLabels as Record<string, string>;
-  const listHints = t.listHints as Record<string, string>;
   const resultsHint = result ? t.selectIdeaHint : chatPrompt ? t.chatPromptHint : t.subtitle;
-  const trimmedArchitecture = architecture.trim();
-  const architectureMode =
-    trimmedArchitecture === ARCHITECTURE_LLM_BEST
-      ? "llm_best"
-      : trimmedArchitecture
-        ? "manual"
-        : "ignore";
-  const architectureDescription =
-    architectureMode === "manual"
-      ? architectureDescriptions[trimmedArchitecture]?.[language]
-      : undefined;
 
   useEffect(() => {
-    const loadLists = async () => {
-      try {
-        const response = await fetch("/api/v1/lists");
-        if (!response.ok) throw new Error("Failed to load lists");
-        const data = (await response.json()) as { lists: Lists };
-        setLists(mergeLists(defaultLists, data.lists));
-      } catch (err) {
-        console.error(err);
+    const raw = localStorage.getItem(ELEMENTS_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const parsed = safeParseJson(raw);
+      if (isElementsConfig(parsed)) {
+        setElements(parsed);
+        setElementsJson(JSON.stringify(parsed, null, 2));
+      } else {
+        localStorage.removeItem(ELEMENTS_STORAGE_KEY);
       }
-    };
-
-    loadLists();
+    } catch {
+      localStorage.removeItem(ELEMENTS_STORAGE_KEY);
+    }
   }, []);
+
+  useEffect(() => {
+    setSelections((prev) => buildSelectionState(categoryKeys, prev));
+    setNewItems((prev) => buildTextState(categoryKeys, prev));
+  }, [categoryKeys.join("|")]);
+
+  useEffect(() => {
+    localStorage.setItem(ELEMENTS_STORAGE_KEY, JSON.stringify(elements, null, 2));
+  }, [elements]);
 
   const handleModeChange = (name: ListName, mode: SelectionMode) => {
     setSelections((prev) => ({
@@ -631,25 +642,63 @@ export default function App() {
   const addListItem = (name: ListName) => {
     const value = newItems[name].trim();
     if (!value) return;
-    setLists((prev) => {
-      const exists = prev[name].some(
-        (item) => item.toLowerCase() === value.toLowerCase(),
-      );
-      const updated = exists ? prev[name] : [...prev[name], value];
-      return { ...prev, [name]: updated };
+    setElements((prev) => {
+      const categories = prev.categories.map((category) => {
+        if (category.key !== name) return category;
+        const exists = Object.keys(category.options).some(
+          (item) => item.toLowerCase() === value.toLowerCase(),
+        );
+        if (exists) return category;
+        return {
+          ...category,
+          options: {
+            ...category.options,
+            [value]: { es: "", en: "" },
+          },
+        };
+      });
+      return { ...prev, categories };
     });
     setNewItems((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const saveLists = async () => {
+  const handleImportElements = () => {
+    const raw = elementsJson.trim();
+    if (!raw) return;
     try {
-      await fetch("/api/v1/lists", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lists }),
-      });
+      const parsed = safeParseJson(raw);
+      if (!isElementsConfig(parsed)) {
+        throw new Error(t.elementsInvalid);
+      }
+      setElements(parsed);
+      setElementsError(null);
     } catch (err) {
-      console.error(err);
+      const message = (err as Error).message || t.elementsInvalid;
+      setElementsError(message);
+    }
+  };
+
+  const handleExportElements = () => {
+    setElementsJson(JSON.stringify(elements, null, 2));
+    setElementsError(null);
+  };
+
+  const handleResetElements = () => {
+    setElements(defaultElements);
+    setElementsJson(JSON.stringify(defaultElements, null, 2));
+    setElementsError(null);
+    localStorage.removeItem(ELEMENTS_STORAGE_KEY);
+  };
+
+  const handleElementsFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      setElementsJson(text);
+      setElementsError(null);
+    } catch {
+      setElementsError(t.elementsInvalid);
     }
   };
 
@@ -722,7 +771,6 @@ export default function App() {
       const payload = {
         language,
         templateLevel,
-        architecture: trimmedArchitecture || undefined,
         selections: selectionsPayload,
         extraNotes: trimmedExtraNotes || undefined,
         constraints: constraintsPayload,
@@ -762,18 +810,6 @@ export default function App() {
           constraints: constraintsPayload,
           selections: selectionInput,
         };
-
-        if (architectureMode === "manual") {
-          chatInput.architecture = {
-            mode: "manual",
-            key: trimmedArchitecture,
-            description: architectureDescription,
-          };
-        }
-
-        if (architectureMode === "llm_best") {
-          chatInput.architecture = { mode: "llm_best" };
-        }
 
         setChatPrompt(buildChatPrompt(language, chatInput));
         return;
@@ -833,15 +869,6 @@ export default function App() {
       const payload = {
         language,
         templateLevel,
-        architecture: trimmedArchitecture || undefined,
-        pattern:
-          selections.pattern.mode === "manual"
-            ? selections.pattern.value.trim() || undefined
-            : undefined,
-        stack:
-          selections.stack.mode === "manual"
-            ? selections.stack.value.trim() || undefined
-            : undefined,
         idea,
         extraNotes: extraNotes.trim() || undefined,
         constraints: {
@@ -946,106 +973,91 @@ export default function App() {
           </div>
 
           <div className="grid">
-            <div className="field">
-              <div className="field-title">
-                <div>
-                  <strong>{t.architecture}</strong>
-                  <span>{t.architectureHint}</span>
-                </div>
-              </div>
+            {listOrder.map((name) => {
+              const category = categoriesByKey[name];
+              const label =
+                getLocalizedText(category?.label, language) ??
+                formatKeyLabel(name);
+              const hint = getLocalizedText(category?.hint, language) ?? "";
+              const options = lists[name] ?? [];
 
-              <select
-                className="value-select"
-                value={architecture}
-                onChange={(event) => setArchitecture(event.target.value)}
-              >
-                <option value="">{t.none}</option>
-                <option value={ARCHITECTURE_LLM_BEST}>{t.architectureAuto}</option>
-                {architectureKeys.map((key) => (
-                  <option key={key} value={key}>
-                    {formatKeyLabel(key)}
-                  </option>
-                ))}
-              </select>
-
-              {architectureMode === "llm_best" ? (
-                <div className="option-description">{t.architectureAutoHint}</div>
-              ) : architectureMode === "manual" && architectureDescription ? (
-                <div className="option-description">{architectureDescription}</div>
-              ) : null}
-            </div>
-
-            {listOrder.map((name) => (
-              <div className="field" key={name}>
-                <div className="field-title">
-                  <div>
-                    <strong>{listLabels[name] ?? formatKeyLabel(name)}</strong>
-                    <span>{listHints[name] ?? ""}</span>
+              return (
+                <div className="field" key={name}>
+                  <div className="field-title">
+                    <div>
+                      <strong>{label}</strong>
+                      <span>{hint}</span>
+                    </div>
+                    <div className="mode">
+                      <label>{t.mode}</label>
+                      <select
+                        value={selections[name].mode}
+                        onChange={(event) =>
+                          handleModeChange(
+                            name,
+                            event.target.value as SelectionMode,
+                          )
+                        }
+                      >
+                        <option value="manual">{t.manual}</option>
+                        <option value="decide">{t.decide}</option>
+                        <option value="ignore">{t.none}</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="mode">
-                    <label>{t.mode}</label>
-                    <select
-                      value={selections[name].mode}
+
+                  {selections[name].mode === "manual" ? (
+                    <>
+                      <select
+                        className="value-select"
+                        value={selections[name].value}
+                        onChange={(event) =>
+                          handleValueChange(name, event.target.value)
+                        }
+                      >
+                        <option value="">--</option>
+                        {options.map((item) => (
+                          <option key={item} value={item}>
+                            {formatOptionLabel(item)}
+                          </option>
+                        ))}
+                      </select>
+                      {(() => {
+                        const selected = selections[name].value;
+                        if (!selected) return null;
+                        const description = getLocalizedText(
+                          category?.options?.[selected],
+                          language,
+                        );
+                        return description ? (
+                          <div className="option-description">{description}</div>
+                        ) : null;
+                      })()}
+                    </>
+                  ) : (
+                    <div className="mode-note">
+                      {selections[name].mode === "decide" ? t.decide : t.none}
+                    </div>
+                  )}
+
+                  <div className="adder">
+                    <input
+                      placeholder={t.addItem}
+                      value={newItems[name]}
                       onChange={(event) =>
-                        handleModeChange(name, event.target.value as SelectionMode)
+                        setNewItems((prev) => ({
+                          ...prev,
+                          [name]: event.target.value,
+                        }))
                       }
-                    >
-                      <option value="manual">{t.manual}</option>
-                      <option value="decide">{t.decide}</option>
-                      <option value="ignore">{t.none}</option>
-                    </select>
+                    />
+                    <button type="button" onClick={() => addListItem(name)}>
+                      {t.addItem}
+                    </button>
                   </div>
                 </div>
-
-                {selections[name].mode === "manual" ? (
-                  <>
-                    <select
-                      className="value-select"
-                      value={selections[name].value}
-                      onChange={(event) =>
-                        handleValueChange(name, event.target.value)
-                      }
-                    >
-                      <option value="">--</option>
-                      {lists[name]?.map((item) => (
-                        <option key={item} value={item}>
-                          {formatKeyLabel(item)}
-                        </option>
-                      ))}
-                    </select>
-                    {(() => {
-                      const selected = selections[name].value;
-                      if (!selected) return null;
-                      const description =
-                        listOptionDescriptionsByList[name]?.[selected]?.[language];
-                      return description ? (
-                        <div className="option-description">{description}</div>
-                      ) : null;
-                    })()}
-                  </>
-                ) : (
-                  <div className="mode-note">
-                    {selections[name].mode === "decide" ? t.decide : t.none}
-                  </div>
-                )}
-
-                <div className="adder">
-                  <input
-                    placeholder={t.addItem}
-                    value={newItems[name]}
-                    onChange={(event) =>
-                      setNewItems((prev) => ({
-                        ...prev,
-                        [name]: event.target.value,
-                      }))
-                    }
-                  />
-                  <button type="button" onClick={() => addListItem(name)}>
-                    {t.addItem}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="panel-actions">
@@ -1159,9 +1171,6 @@ export default function App() {
               onChange={(event) => setExtraNotes(event.target.value)}
             />
             <div className="actions-row">
-              <button type="button" className="ghost" onClick={saveLists}>
-                {t.saveLists}
-              </button>
               <button
                 type="button"
                 className="primary"
@@ -1172,6 +1181,47 @@ export default function App() {
               </button>
             </div>
             {error ? <div className="error">{error}</div> : null}
+          </div>
+        </section>
+
+        <section className="panel elements-panel">
+          <div className="panel-header">
+            <div>
+              <h2>{t.elementsTitle}</h2>
+              <p className="hint">{t.elementsHint}</p>
+            </div>
+          </div>
+          <div className="elements-body">
+            <label className="file-input">
+              <span>{t.elementsFile}</span>
+              <input
+                type="file"
+                accept="application/json"
+                onChange={handleElementsFile}
+              />
+            </label>
+            <textarea
+              placeholder={t.elementsPlaceholder}
+              value={elementsJson}
+              onChange={(event) => setElementsJson(event.target.value)}
+            />
+            {elementsError ? <div className="error">{elementsError}</div> : null}
+            <div className="button-row">
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleImportElements}
+                disabled={!elementsJson.trim()}
+              >
+                {t.elementsImport}
+              </button>
+              <button type="button" className="ghost" onClick={handleExportElements}>
+                {t.elementsExport}
+              </button>
+              <button type="button" className="ghost" onClick={handleResetElements}>
+                {t.elementsReset}
+              </button>
+            </div>
           </div>
         </section>
 

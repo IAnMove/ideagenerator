@@ -146,6 +146,34 @@ p {
   animation-delay: 0.08s;
 }
 
+.elements-panel .elements-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.elements-panel textarea {
+  min-height: 200px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  background: #fff;
+  resize: vertical;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.file-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.file-input input[type="file"] {
+  font-size: 0.85rem;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;

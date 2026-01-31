@@ -259,19 +259,6 @@ function buildPrompt(
       ? formatArchitectureLabel(architecture)
       : null;
 
-  const patternConfig = request.selections.pattern;
-  const stackConfig = request.selections.stack;
-
-  const patternValue =
-    patternConfig && patternConfig.mode !== "ignore"
-      ? selections.pattern
-      : null;
-  const stackValue =
-    stackConfig && stackConfig.mode !== "ignore" ? selections.stack : null;
-
-  const patternLabel = patternValue ? formatArchitectureLabel(patternValue) : null;
-  const stackLabel = stackValue ? formatArchitectureLabel(stackValue) : null;
-
   const techLinesEs = [
     "Objetivo: construir una app web simple y mantenible con Clean Code (codigo facil de leer).",
     `Nivel de plantilla: ${request.templateLevel}.`,
@@ -280,8 +267,6 @@ function buildPrompt(
       : architectureMode === "llm_best"
         ? ["Arquitectura: elige la mejor opcion y justificala brevemente."]
         : []),
-    ...(patternLabel ? [`Patron: ${patternLabel}.`] : []),
-    ...(stackLabel ? [`Stack: ${stackLabel}.`] : []),
     "Si aplica, organiza en capas: domain, application, infrastructure, interface.",
     "Define endpoints, modelos de datos y validaciones.",
     "Agrega tests unitarios minimos para casos de uso.",
@@ -296,8 +281,6 @@ function buildPrompt(
       : architectureMode === "llm_best"
         ? ["Architecture: choose the best option and justify it briefly."]
         : []),
-    ...(patternLabel ? [`Pattern: ${patternLabel}.`] : []),
-    ...(stackLabel ? [`Stack: ${stackLabel}.`] : []),
     "If applicable, organize layers: domain, application, infrastructure, interface.",
     "Define endpoints, data models, and validations.",
     "Add minimal unit tests for use cases.",
