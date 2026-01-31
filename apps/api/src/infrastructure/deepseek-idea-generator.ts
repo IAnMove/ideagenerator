@@ -4,8 +4,11 @@
   ListName,
   ResolvedSelections,
 } from "../domain/models.js";
-import type { ElementsConfig } from "../domain/models.js";
 import type { IdeaGenerator, LlmOptions } from "../application/ports.js";
+import {
+  buildIdeaPromptMessages,
+  type IdeaPromptInput,
+} from "../application/idea-prompt-template.js";
 
 type DeepSeekConfig = {
   apiKey: string;
@@ -19,19 +22,7 @@ type LlmSelection = {
   value: string;
 } | { mode: "decide" };
 
-type LlmInput = {
-  language: string;
-  templateLevel: string;
-  architecture?: string;
-  elements?: ElementsConfig;
-  extraNotes?: string;
-  constraints?: {
-    time?: string;
-    effort?: string;
-    budget?: string;
-  };
-  selections: Record<ListName, LlmSelection>;
-};
+type LlmInput = IdeaPromptInput;
 
 export class DeepSeekIdeaGenerator implements IdeaGenerator {
   constructor(private readonly config: DeepSeekConfig) {}
@@ -42,7 +33,11 @@ export class DeepSeekIdeaGenerator implements IdeaGenerator {
     llmOptions: LlmOptions,
   ): Promise<IdeaResponse> {
     const input = buildLlmInput(request);
-    const messages = buildMessages(input);
+    const { system, user } = buildIdeaPromptMessages(input);
+    const messages = [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ];
     const model = request.llm?.model || this.config.model;
     const baseUrl = request.llm?.baseUrl || this.config.baseUrl;
     const apiKey = request.llm?.apiKey || this.config.apiKey;
@@ -121,75 +116,6 @@ function buildLlmInput(
     constraints: request.constraints,
     selections,
   };
-}
-
-function buildMessages(input: LlmInput) {
-  const system =
-    "Return ONLY valid JSON. No markdown, no code fences, no commentary.";
-
-  const schema = `{
-  "language": "es" | "en",
-  "ideas": [
-    {
-      "title": "...",
-      "oneLiner": "...",
-      "inputs": { "<category_key>": "..." },
-      "solution": "...",
-      "differentiator": "...",
-      "mvp": ["...", "...", "..."],
-      "score": { "value": 1-10, "reasons": ["...", "...", "..."] },
-      "pros": ["...", "...", "..."],
-      "cons": ["...", "...", "..."],
-      "painFrequency": "...",
-      "willingnessToPay": "...",
-      "alternatives": "...",
-      "roiImpact": "...",
-      "adoptionFriction": "...",
-      "acquisition": "...",
-      "retention": "...",
-      "risks": "..."
-    }
-  ],
-  "prompt": { "intro": "...", "technical": "..." }
-}`;
-
-  const user = [
-    "You generate app ideas and a technical prompt.",
-    "Use the input and rules below.",
-    "",
-    "RULES:",
-    "- Output JSON only, matching the schema exactly.",
-    "- Use input.language for all text.",
-    "- Consider constraints (time/effort/budget) if provided.",
-    "- Goal: make prompt.technical drive simple, Clean Code with minimal dependencies, no over-engineering, and easy-to-read code.",
-    "- Selections: input.selections may omit keys.",
-    "  - If a selection is present with mode=manual: use selection.value as is.",
-    "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
-    "  - If a selection is missing: treat it as unconstrained and choose the best value.",
-    "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
-    "- Elements: if input.elements is provided, use its categories/options.",
-    "  - For each selection key, if input.elements has options for that key, choose one of those option keys.",
-    "- Architecture:",
-    "  - If input.architecture is missing/empty: do NOT mention architecture.",
-    "  - If input.architecture == \"__llm_best__\": choose the best architecture and justify briefly.",
-    "    Put the chosen architecture + rationale at the top of prompt.technical (1-3 lines).",
-    "  - Otherwise: follow input.architecture (treat it as a key/name) and align the prompt.technical accordingly.",
-    "- Generate exactly 3 ideas.",
-    "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-    "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
-    "- The prompt.technical must include: recommended stack (language/framework), Clean Code guidance, practical folder structure, endpoints, data models, validations, minimal tests, and a short README outline.",
-    "",
-    "SCHEMA:",
-    schema,
-    "",
-    "INPUT:",
-    JSON.stringify(input, null, 2),
-  ].join("\n");
-
-  return [
-    { role: "system", content: system },
-    { role: "user", content: user },
-  ];
 }
 
 function safeParseJson<T>(raw: string): T {

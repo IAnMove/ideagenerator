@@ -537,6 +537,33 @@ button.ghost {
   padding-left: 18px;
 }
 
+.inputs {
+  margin-top: 10px;
+}
+
+.inputs ul {
+  padding-left: 18px;
+}
+
+.input-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.input-label {
+  font-weight: 600;
+}
+
+.input-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.input-value {
+  margin-top: 4px;
+}
+
 .lists {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

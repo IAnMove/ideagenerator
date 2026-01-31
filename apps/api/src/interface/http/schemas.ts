@@ -23,7 +23,14 @@ const ElementCategorySchema = Type.Object({
 const ElementsSchema = Type.Object({
   version: Type.Literal(1),
   categories: Type.Array(ElementCategorySchema),
+  ideaPrompt: Type.Optional(Type.Union([Type.String(), LocalizedTextSchema])),
+  ideaSystemPrompt: Type.Optional(
+    Type.Union([Type.String(), LocalizedTextSchema]),
+  ),
   productionPrompt: Type.Optional(
+    Type.Union([Type.String(), LocalizedTextSchema]),
+  ),
+  productionSystemPrompt: Type.Optional(
     Type.Union([Type.String(), LocalizedTextSchema]),
   ),
 });

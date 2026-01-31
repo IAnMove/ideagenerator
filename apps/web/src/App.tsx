@@ -65,7 +65,7 @@ type LocalizedText = Record<string, string>;
 
 type LocalizedDescriptions = Record<string, LocalizedText>;
 
-type ProductionPromptTemplate = string | LocalizedText;
+type PromptTemplate = string | LocalizedText;
 
 type InputsDetail = {
   value: string;
@@ -84,13 +84,86 @@ type ElementCategory = {
 type ElementsConfig = {
   version: 1;
   categories: ElementCategory[];
-  productionPrompt?: ProductionPromptTemplate;
+  ideaPrompt?: PromptTemplate;
+  ideaSystemPrompt?: PromptTemplate;
+  productionPrompt?: PromptTemplate;
+  productionSystemPrompt?: PromptTemplate;
 };
 
 const ELEMENTS_STORAGE_KEY = "idea-forge.elements.v1";
 
 const defaultElements: ElementsConfig = {
   version: 1,
+  ideaSystemPrompt: {
+    es: "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.",
+    en: "Return ONLY valid JSON. No markdown, no code fences, no commentary.",
+  },
+  ideaPrompt: {
+    es: [
+      "TAREA:",
+      "Genera 3 ideas de apps Y un prompt tecnico listo para pegar en un agente de codigo (Codex).",
+      "",
+      "REGLAS:",
+      "- Devuelve SOLO JSON, siguiendo el schema exactamente.",
+      "- Usa input.language para TODO el texto.",
+      "- Considera restricciones (time/effort/budget) si existen.",
+      "- Objetivo: que prompt.technical empuje a codigo simple con Clean Code, minimas dependencias, sin sobreingenieria y facil de leer.",
+      "- Selecciones: input.selections puede omitir keys.",
+      "  - Si hay una seleccion con mode=manual: usa selection.value tal cual.",
+      "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
+      "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
+      "- Para cada idea, incluye un objeto inputs con los valores elegidos para las keys de selecciones.",
+      "- Elementos: si input.elements existe, usa sus categorias/opciones.",
+      "  - Para cada key de seleccion, si hay opciones en input.elements, elige una de esas opciones.",
+      "- Arquitectura:",
+      "  - Si input.architecture no existe/vacio: NO menciones arquitectura.",
+      "  - Si input.architecture == \"__llm_best__\": elige la mejor y justificala brevemente.",
+      "    Pon la arquitectura elegida + razon al inicio de prompt.technical (1-3 lineas).",
+      "  - Si no: sigue input.architecture (tratalo como key/nombre) y alinea prompt.technical.",
+      "- Genera exactamente 3 ideas.",
+      "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
+      "- Si usas valores con underscores/guiones en el texto, conviertelos a espacios para legibilidad.",
+      "- El prompt.technical debe incluir: stack recomendado (lenguaje/framework), guia de Clean Code, estructura practica (carpetas), endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
+      "",
+      "SCHEMA:",
+      "%schema%",
+      "",
+      "INPUT:",
+      "%input%",
+    ].join("\n"),
+    en: [
+      "TASK:",
+      "Generate 3 app ideas AND a technical prompt ready to paste into a coding agent (Codex).",
+      "",
+      "RULES:",
+      "- Output JSON only, matching the schema exactly.",
+      "- Use input.language for all text.",
+      "- Consider constraints (time/effort/budget) if provided.",
+      "- Goal: make prompt.technical drive simple, Clean Code with minimal dependencies, no over-engineering, and easy-to-read code.",
+      "- Selections: input.selections may omit keys.",
+      "  - If a selection is present with mode=manual: use selection.value as is.",
+      "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
+      "  - If a selection is missing: treat it as unconstrained and choose the best value.",
+      "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
+      "- Elements: if input.elements is provided, use its categories/options.",
+      "  - For each selection key, if input.elements has options for that key, choose one of those option keys.",
+      "- Architecture:",
+      "  - If input.architecture is missing/empty: do NOT mention architecture.",
+      "  - If input.architecture == \"__llm_best__\": choose the best architecture and justify briefly.",
+      "    Put the chosen architecture + rationale at the top of prompt.technical (1-3 lines).",
+      "  - Otherwise: follow input.architecture (treat it as a key/name) and align the prompt.technical accordingly.",
+      "- Generate exactly 3 ideas.",
+      "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
+      "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
+      "- The prompt.technical must include: recommended stack (language/framework), Clean Code guidance, practical folder structure, endpoints, data models, validations, minimal tests, and a short README outline.",
+      "",
+      "SCHEMA:",
+      "%schema%",
+      "",
+      "INPUT:",
+      "%input%",
+    ].join("\n"),
+  },
   productionPrompt: {
     es: [
       "Eres un asistente senior. Usa el INPUT JSON para generar un prompt de ejecucion que permita construir el resultado final.",
@@ -106,6 +179,10 @@ const defaultElements: ElementsConfig = {
       "INPUT JSON:",
       "%response%",
     ].join("\n"),
+  },
+  productionSystemPrompt: {
+    es: "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.",
+    en: "Return ONLY valid JSON. No markdown, no code fences, no commentary.",
   },
   categories: [
     {
@@ -195,9 +272,9 @@ function isStringRecord(value: unknown): value is Record<string, string> {
   return Object.values(value).every((item) => typeof item === "string");
 }
 
-function isProductionPromptTemplate(
+function isPromptTemplate(
   value: unknown,
-): value is ProductionPromptTemplate {
+): value is PromptTemplate {
   return typeof value === "string" || isStringRecord(value);
 }
 
@@ -223,15 +300,21 @@ function isElementsConfig(value: unknown): value is ElementsConfig {
   if (value.version !== 1) return false;
   if (!Array.isArray(value.categories)) return false;
 
-  const promptValue =
+  const promptValues = [
+    (value as { ideaPrompt?: unknown }).ideaPrompt ??
+      (value as { idea_prompt?: unknown }).idea_prompt,
+    (value as { ideaSystemPrompt?: unknown }).ideaSystemPrompt ??
+      (value as { idea_system_prompt?: unknown }).idea_system_prompt,
     (value as { productionPrompt?: unknown }).productionPrompt ??
-    (value as { production_prompt?: unknown }).production_prompt;
+      (value as { production_prompt?: unknown }).production_prompt,
+    (value as { productionSystemPrompt?: unknown }).productionSystemPrompt ??
+      (value as { production_system_prompt?: unknown }).production_system_prompt,
+  ];
 
-  if (
-    promptValue !== undefined &&
-    !isProductionPromptTemplate(promptValue)
-  ) {
-    return false;
+  for (const promptValue of promptValues) {
+    if (promptValue !== undefined && !isPromptTemplate(promptValue)) {
+      return false;
+    }
   }
 
   const keys = new Set<string>();
@@ -251,14 +334,20 @@ function isElementsConfig(value: unknown): value is ElementsConfig {
 
 function normalizeElementsConfig(value: ElementsConfig): ElementsConfig {
   const legacy = value as ElementsConfig & {
-    production_prompt?: ProductionPromptTemplate;
+    idea_prompt?: PromptTemplate;
+    idea_system_prompt?: PromptTemplate;
+    production_prompt?: PromptTemplate;
+    production_system_prompt?: PromptTemplate;
   };
 
-  if (!legacy.productionPrompt && legacy.production_prompt) {
-    return { ...legacy, productionPrompt: legacy.production_prompt };
-  }
-
-  return value;
+  return {
+    ...legacy,
+    ideaPrompt: legacy.ideaPrompt ?? legacy.idea_prompt,
+    ideaSystemPrompt: legacy.ideaSystemPrompt ?? legacy.idea_system_prompt,
+    productionPrompt: legacy.productionPrompt ?? legacy.production_prompt,
+    productionSystemPrompt:
+      legacy.productionSystemPrompt ?? legacy.production_system_prompt,
+  };
 }
 
 function buildSelectionState(
@@ -395,13 +484,55 @@ const productionPromptSchema = `{
   "prompt": "..."
 }`;
 
+function resolveIdeaTemplate(
+  elements: ElementsConfig | undefined,
+  language: LanguageCode,
+): string {
+  const template =
+    elements?.ideaPrompt ??
+    (elements as { idea_prompt?: PromptTemplate } | undefined)?.idea_prompt ??
+    defaultElements.ideaPrompt;
+  if (typeof template === "string") return template;
+  return getLocalizedText(template, language) ?? "";
+}
+
+function resolveIdeaSystemPrompt(
+  elements: ElementsConfig | undefined,
+  language: LanguageCode,
+): string {
+  const system =
+    elements?.ideaSystemPrompt ??
+    (elements as { idea_system_prompt?: PromptTemplate } | undefined)
+      ?.idea_system_prompt ??
+    defaultElements.ideaSystemPrompt;
+  if (typeof system === "string") return system;
+  return getLocalizedText(system, language) ?? "";
+}
+
 function resolveProductionTemplate(
   elements: ElementsConfig | undefined,
   language: LanguageCode,
 ): string {
-  const template = elements?.productionPrompt ?? defaultElements.productionPrompt;
+  const template =
+    elements?.productionPrompt ??
+    (elements as { production_prompt?: PromptTemplate } | undefined)
+      ?.production_prompt ??
+    defaultElements.productionPrompt;
   if (typeof template === "string") return template;
   return getLocalizedText(template, language) ?? "";
+}
+
+function resolveProductionSystemPrompt(
+  elements: ElementsConfig | undefined,
+  language: LanguageCode,
+): string {
+  const system =
+    elements?.productionSystemPrompt ??
+    (elements as { production_system_prompt?: PromptTemplate } | undefined)
+      ?.production_system_prompt ??
+    defaultElements.productionSystemPrompt;
+  if (typeof system === "string") return system;
+  return getLocalizedText(system, language) ?? "";
 }
 
 function buildInputsDetailed(
@@ -487,11 +618,9 @@ function buildProductionChatPrompt(
   language: LanguageCode,
   template: string,
   payload: string,
+  elements: ElementsConfig | undefined,
 ): string {
-  const system =
-    language === "en"
-      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
-      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.";
+  const system = resolveProductionSystemPrompt(elements, language);
 
   const rules =
     language === "en"
@@ -541,75 +670,29 @@ function removeEmpty<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(entries) as T;
 }
 
+function applyIdeaTemplate(
+  template: string,
+  schema: string,
+  inputJson: string,
+): string {
+  const replaced = template
+    .replaceAll("%schema%", schema)
+    .replaceAll("%input%", inputJson)
+    .replaceAll("%input_json%", inputJson);
+
+  if (replaced === template) {
+    return [template, "", "SCHEMA:", schema, "", "INPUT:", inputJson].join("\n");
+  }
+
+  return replaced;
+}
+
 function buildChatPrompt(language: LanguageCode, input: ChatLlmInput): string {
-  const system =
-    language === "en"
-      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
-      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.";
-
-  const task =
-    language === "en"
-      ? [
-          "TASK:",
-          "Generate 3 app ideas AND a technical prompt ready to paste into a coding agent (Codex).",
-        ]
-      : [
-          "TAREA:",
-          "Genera 3 ideas de apps Y un prompt tecnico listo para pegar en un agente de codigo (Codex).",
-        ];
-
-  const rules =
-    language === "en"
-      ? [
-          "RULES:",
-          "- Output JSON only, matching the schema exactly.",
-          "- Use input.language for all text.",
-          "- Consider constraints (time/effort/budget) if provided.",
-          "- Goal: make prompt.technical drive simple, Clean Code with minimal dependencies, no over-engineering, and easy-to-read code.",
-          "- Selections: input.selections may omit keys.",
-          "  - If a selection is present with mode=manual: use selection.value as is.",
-          "  - If a selection is present with mode=decide: choose the best value yourself (do not ask the user).",
-          "  - If a selection is missing: treat it as unconstrained and choose the best value.",
-          "- For each idea, include an inputs object with the chosen values for the provided selection keys.",
-          "- Elements: input.elements defines available categories and options.",
-          "  - For each selection key, if input.elements has options for that key, choose one of those option keys.",
-          "- If you use selection values in output text, convert underscores/hyphens to spaces for readability.",
-          "- Generate exactly 3 ideas.",
-          "- Each idea must include the validation fields: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-          "- The prompt.technical must include: recommended stack (language/framework), Clean Code guidance, a practical structure (folders), endpoints, data models, validations, minimal tests, and a short README outline.",
-        ]
-      : [
-          "REGLAS:",
-          "- Devuelve SOLO JSON, siguiendo el schema exactamente.",
-          "- Usa input.language para TODO el texto.",
-          "- Considera restricciones (time/effort/budget) si existen.",
-          "- Objetivo: que prompt.technical empuje a codigo simple con Clean Code, minimas dependencias, sin sobreingenieria y facil de leer.",
-          "- Selecciones: input.selections puede omitir keys.",
-          "  - Si hay una seleccion con mode=manual: usa selection.value tal cual.",
-          "  - Si hay una seleccion con mode=decide: elige tu el mejor valor (no preguntes al usuario).",
-          "  - Si falta una seleccion: sin restriccion; elige el mejor valor.",
-          "- Para cada idea, incluye un objeto inputs con los valores elegidos para las keys de selecciones.",
-          "- Elementos: input.elements define las categorias y opciones disponibles.",
-          "  - Para cada key de seleccion, si hay opciones en input.elements, elige una de esas opciones.",
-          "- Si usas valores con underscores/guiones en el texto, conviertelos a espacios para legibilidad.",
-          "- Genera exactamente 3 ideas.",
-          "- Cada idea debe incluir los campos de validacion: painFrequency, willingnessToPay, alternatives, roiImpact, adoptionFriction, acquisition, retention, risks.",
-          "- El prompt.technical debe incluir: stack recomendado (lenguaje/framework), guia de Clean Code, una estructura practica (carpetas), endpoints, modelos de datos, validaciones, tests minimos y un esquema corto de README.",
-        ];
-
-  return [
-    system,
-    "",
-    ...task,
-    "",
-    ...rules,
-    "",
-    language === "en" ? "SCHEMA:" : "SCHEMA:",
-    ideaResponseSchema,
-    "",
-    language === "en" ? "INPUT:" : "INPUT:",
-    JSON.stringify(input, null, 2),
-  ].join("\n");
+  const system = resolveIdeaSystemPrompt(input.elements, language);
+  const template = resolveIdeaTemplate(input.elements, language);
+  const inputJson = JSON.stringify(input, null, 2);
+  const body = applyIdeaTemplate(template, ideaResponseSchema, inputJson);
+  return [system, "", body].join("\n");
 }
 
 const i18n = {
@@ -693,6 +776,7 @@ const i18n = {
     elementsInvalid:
       "JSON invalido o no cumple con el schema de elementos.",
     validation: "Validacion",
+    inputsTitle: "Inputs",
     painFrequency: "Dolor y frecuencia",
     willingnessToPay: "Disposicion a pagar",
     alternatives: "Alternativas actuales",
@@ -782,6 +866,7 @@ const i18n = {
     elementsInvalid:
       "Invalid JSON or it doesn't match the elements schema.",
     validation: "Validation",
+    inputsTitle: "Inputs",
     painFrequency: "Pain & frequency",
     willingnessToPay: "Willingness to pay",
     alternatives: "Current alternatives",
@@ -803,6 +888,10 @@ export default function App() {
   const [elementsError, setElementsError] = useState<string | null>(null);
   const categoryKeys = useMemo(
     () => elements.categories.map((category) => category.key),
+    [elements],
+  );
+  const categoryLookup = useMemo(
+    () => new Map(elements.categories.map((category) => [category.key, category])),
     [elements],
   );
   const listOrder = categoryKeys;
@@ -1158,7 +1247,9 @@ export default function App() {
         extraNotes: extraNotes.trim() || undefined,
         constraints: constraintsPayload,
       });
-      setProductionChatPrompt(buildProductionChatPrompt(language, template, payload));
+      setProductionChatPrompt(
+        buildProductionChatPrompt(language, template, payload, elements),
+      );
       setCodexLoading(false);
       return;
     }
@@ -1639,93 +1730,134 @@ export default function App() {
           ) : (
             <div className="results-body">
               <div className="ideas">
-                {result.ideas.map((idea, index) => (
-                  <article
-                    className={`idea-card ${
-                      selectedIdeaIndex === index ? "selected" : ""
-                    }`}
-                    key={`${idea.title}-${index}`}
-                    onClick={() => handleSelectIdea(idea, index)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        handleSelectIdea(idea, index);
-                      }
-                    }}
-                  >
-                    <div className="idea-head">
-                      <h3>{idea.title}</h3>
-                      <span className="score">
-                        {t.score}: {idea.score.value}
-                      </span>
-                    </div>
-                    <p className="one-liner">{idea.oneLiner}</p>
-                    <p className="detail">{idea.solution}</p>
-                    <p className="detail">{idea.differentiator}</p>
-                    <div className="mvp">
-                      <strong>MVP</strong>
-                      <ul>
-                        {idea.mvp.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="lists">
-                      <div>
-                        <strong>{t.pros}</strong>
+                {result.ideas.map((idea, index) => {
+                  const inputEntries = Object.entries(idea.inputs ?? {});
+
+                  return (
+                    <article
+                      className={`idea-card ${
+                        selectedIdeaIndex === index ? "selected" : ""
+                      }`}
+                      key={`${idea.title}-${index}`}
+                      onClick={() => handleSelectIdea(idea, index)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          handleSelectIdea(idea, index);
+                        }
+                      }}
+                    >
+                      <div className="idea-head">
+                        <h3>{idea.title}</h3>
+                        <span className="score">
+                          {t.score}: {idea.score.value}
+                        </span>
+                      </div>
+                      <p className="one-liner">{idea.oneLiner}</p>
+                      <p className="detail">{idea.solution}</p>
+                      <p className="detail">{idea.differentiator}</p>
+                      <div className="mvp">
+                        <strong>MVP</strong>
                         <ul>
-                          {idea.pros.map((pro) => (
-                            <li key={pro}>{pro}</li>
+                          {idea.mvp.map((item) => (
+                            <li key={item}>{item}</li>
                           ))}
                         </ul>
                       </div>
-                      <div>
-                        <strong>{t.cons}</strong>
-                        <ul>
-                          {idea.cons.map((con) => (
-                            <li key={con}>{con}</li>
-                          ))}
-                        </ul>
+                      {inputEntries.length > 0 ? (
+                        <div className="inputs">
+                          <strong>{t.inputsTitle}</strong>
+                          <ul>
+                            {inputEntries.map(([key, value]) => {
+                              const category = categoryLookup.get(key);
+                              const label =
+                                getLocalizedText(category?.label, language) ??
+                                formatKeyLabel(key);
+                              const hint = getLocalizedText(category?.hint, language);
+                              const description = category?.options?.[value]
+                                ? getLocalizedText(
+                                    category.options[value],
+                                    language,
+                                  )
+                                : undefined;
+
+                              return (
+                                <li key={`${key}-${value}`}>
+                                  <div className="input-head">
+                                    <span className="input-label">{label}</span>
+                                    {hint ? (
+                                      <span className="input-hint">{hint}</span>
+                                    ) : null}
+                                  </div>
+                                  <div className="input-value">
+                                    {formatOptionLabel(value)}
+                                  </div>
+                                  {description ? (
+                                    <p className="detail">{description}</p>
+                                  ) : null}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ) : null}
+                      <div className="lists">
+                        <div>
+                          <strong>{t.pros}</strong>
+                          <ul>
+                            {idea.pros.map((pro) => (
+                              <li key={pro}>{pro}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>{t.cons}</strong>
+                          <ul>
+                            {idea.cons.map((con) => (
+                              <li key={con}>{con}</li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
-                    </div>
-                    <div className="validation">
-                      <strong>{t.validation}</strong>
-                      <div>
-                        <span>{t.painFrequency}</span>
-                        <p>{idea.painFrequency}</p>
+                      <div className="validation">
+                        <strong>{t.validation}</strong>
+                        <div>
+                          <span>{t.painFrequency}</span>
+                          <p>{idea.painFrequency}</p>
+                        </div>
+                        <div>
+                          <span>{t.willingnessToPay}</span>
+                          <p>{idea.willingnessToPay}</p>
+                        </div>
+                        <div>
+                          <span>{t.alternatives}</span>
+                          <p>{idea.alternatives}</p>
+                        </div>
+                        <div>
+                          <span>{t.roiImpact}</span>
+                          <p>{idea.roiImpact}</p>
+                        </div>
+                        <div>
+                          <span>{t.adoptionFriction}</span>
+                          <p>{idea.adoptionFriction}</p>
+                        </div>
+                        <div>
+                          <span>{t.acquisition}</span>
+                          <p>{idea.acquisition}</p>
+                        </div>
+                        <div>
+                          <span>{t.retention}</span>
+                          <p>{idea.retention}</p>
+                        </div>
+                        <div>
+                          <span>{t.risks}</span>
+                          <p>{idea.risks}</p>
+                        </div>
                       </div>
-                      <div>
-                        <span>{t.willingnessToPay}</span>
-                        <p>{idea.willingnessToPay}</p>
-                      </div>
-                      <div>
-                        <span>{t.alternatives}</span>
-                        <p>{idea.alternatives}</p>
-                      </div>
-                      <div>
-                        <span>{t.roiImpact}</span>
-                        <p>{idea.roiImpact}</p>
-                      </div>
-                      <div>
-                        <span>{t.adoptionFriction}</span>
-                        <p>{idea.adoptionFriction}</p>
-                      </div>
-                      <div>
-                        <span>{t.acquisition}</span>
-                        <p>{idea.acquisition}</p>
-                      </div>
-                      <div>
-                        <span>{t.retention}</span>
-                        <p>{idea.retention}</p>
-                      </div>
-                      <div>
-                        <span>{t.risks}</span>
-                        <p>{idea.risks}</p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
 
               <div className="prompt">

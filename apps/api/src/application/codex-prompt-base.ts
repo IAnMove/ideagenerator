@@ -2,7 +2,7 @@ import type {
   CodexPromptRequest,
   ElementsConfig,
   LocalizedText,
-  ProductionPromptTemplate,
+  PromptTemplate,
 } from "../domain/models.js";
 
 type Language = "es" | "en";
@@ -44,10 +44,7 @@ export function buildProductionPromptMessages(
   const language: Language = request.language === "en" ? "en" : "es";
   const template = resolveProductionTemplate(request.elements, language);
   const payload = buildProductionPayload(request, language);
-  const system =
-    language === "en"
-      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
-      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.";
+  const system = resolveProductionSystemPrompt(request.elements, language);
   const user = buildProductionUserPrompt(language, template, payload);
   return { system, user };
 }
@@ -94,7 +91,7 @@ function resolveProductionTemplate(
   language: Language,
 ): string {
   const anyElements = elements as
-    | (ElementsConfig & { production_prompt?: ProductionPromptTemplate })
+    | (ElementsConfig & { production_prompt?: PromptTemplate })
     | undefined;
   const rawTemplate =
     anyElements?.productionPrompt ?? anyElements?.production_prompt;
@@ -104,12 +101,30 @@ function resolveProductionTemplate(
 }
 
 function resolveTemplateValue(
-  value: ProductionPromptTemplate | undefined,
+  value: PromptTemplate | undefined,
   language: Language,
 ): string | undefined {
   if (!value) return undefined;
   if (typeof value === "string") return value;
   return getLocalizedText(value, language);
+}
+
+function resolveProductionSystemPrompt(
+  elements: ElementsConfig | undefined,
+  language: Language,
+): string {
+  const anyElements = elements as
+    | (ElementsConfig & { production_system_prompt?: PromptTemplate })
+    | undefined;
+  const rawSystem =
+    anyElements?.productionSystemPrompt ?? anyElements?.production_system_prompt;
+  const resolved = resolveTemplateValue(rawSystem, language);
+  return (
+    resolved ??
+    (language === "en"
+      ? "Return ONLY valid JSON. No markdown, no code fences, no commentary."
+      : "Devuelve SOLO JSON valido. Sin markdown, sin bloques de codigo, sin comentarios.")
+  );
 }
 
 function getLocalizedText(

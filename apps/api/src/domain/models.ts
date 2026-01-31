@@ -6,7 +6,7 @@ export type ListName = string;
 
 export type LocalizedText = Record<string, string>;
 
-export type ProductionPromptTemplate = string | LocalizedText;
+export type PromptTemplate = string | LocalizedText;
 
 export interface ElementCategory {
   key: string;
@@ -18,7 +18,10 @@ export interface ElementCategory {
 export interface ElementsConfig {
   version: 1;
   categories: ElementCategory[];
-  productionPrompt?: ProductionPromptTemplate;
+  ideaPrompt?: PromptTemplate;
+  ideaSystemPrompt?: PromptTemplate;
+  productionPrompt?: PromptTemplate;
+  productionSystemPrompt?: PromptTemplate;
 }
 
 export type SelectionMode = "manual" | "decide" | "ignore";
