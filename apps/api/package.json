@@ -8,11 +8,11 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@fastify/cors": "^8.5.0",
-    "@fastify/type-provider-typebox": "^3.6.0",
-    "@sinclair/typebox": "^0.32.35",
+    "@fastify/cors": "^11.3.1",
+    "@fastify/type-provider-typebox": "^5.2.0",
+    "@sinclair/typebox": "^0.34.52",
     "dotenv": "^16.4.5",
-    "fastify": "^4.27.0"
+    "fastify": "^5.12.7"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
